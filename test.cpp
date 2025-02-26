@@ -21,7 +21,8 @@ void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, uint freq) {
 
 int64_t alarm_callback(alarm_id_t id, void *user_data) {
     // Put your timeout handler code in here
-    return 0;
+    watchdog_update();
+    return 50;
 }
 
 
@@ -53,7 +54,7 @@ int main()
     // For examples of interpolator use see https://github.com/raspberrypi/pico-examples/tree/master/interp
 
     // Timer example code - This example fires off the callback after 2000ms
-    add_alarm_in_ms(2000, alarm_callback, NULL, false);
+    add_alarm_in_ms(50, alarm_callback, NULL, false);
     // For more examples of timer use see https://github.com/raspberrypi/pico-examples/tree/master/timer
 
     // Watchdog example code
