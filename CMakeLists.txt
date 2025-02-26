@@ -66,3 +66,5 @@ target_link_libraries(test
 
 pico_add_extra_outputs(test)
 
+# Select a 200Mhz clock
+add_compile_definitions(SYS_CLK_MHZ=200)
