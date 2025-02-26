@@ -7,55 +7,22 @@
 
 #include "blink.pio.h"
 
-volatile bool do_print = false;
-
-void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin, uint freq)
+void blink_pin_forever(PIO pio, uint sm, uint offset, uint pin)
 {
     blink_program_init(pio, sm, offset, pin);
     pio_sm_set_enabled(pio, sm, true);
-
-    printf("Blinking pin %d at %d Hz\n", pin, freq);
-
-    // PIO counter program takes 3 more cycles in total than we pass as
-    // input (wait for n + 1; mov; jmp)
-    pio->txf[sm] = (2e8 / (2 * freq)) - 3;
 }
 
 int64_t alarm_callback(alarm_id_t id, void *user_data)
 {
-    // Put your timeout handler code in here
-    do_print = true;
-    return -2e6; // wait for another 2000ms
+    static uint8_t cpt = 0;
+    gpio_put(PICO_DEFAULT_LED_PIN, cpt++ & 1);
+    return -10'000; // wait for another 500ms
 }
 
 int main()
 {
     stdio_init_all();
-
-    // PIO Blinking example
-    PIO pio = pio0;
-    uint offset = pio_add_program(pio, &blink_program);
-    printf("Loaded program at %d\n", offset);
-
-#ifdef PICO_DEFAULT_LED_PIN
-    blink_pin_forever(pio, 0, offset, PICO_DEFAULT_LED_PIN, 1);
-#else
-    blink_pin_forever(pio, 0, offset, 6, 3);
-#endif
-    // For more pio examples see https://github.com/raspberrypi/pico-examples/tree/master/pio
-
-    // Interpolator example code
-    interp_config cfg = interp_default_config();
-    // Now use the various interpolator library functions for your use case
-    // e.g. interp_config_clamp(&cfg, true);
-    //      interp_config_shift(&cfg, 2);
-    // Then set the config
-    interp_set_config(interp0, 0, &cfg);
-    // For examples of interpolator use see https://github.com/raspberrypi/pico-examples/tree/master/interp
-
-    // Timer example code - This example fires off the callback after 2000ms
-    add_alarm_in_ms(2000, alarm_callback, NULL, false);
-    // For more examples of timer use see https://github.com/raspberrypi/pico-examples/tree/master/timer
 
     // Watchdog example code
     if (watchdog_caused_reboot())
@@ -68,16 +35,37 @@ int main()
     // second arg is pause on debug which means the watchdog will pause when stepping through code
     watchdog_enable(100, 1);
 
-    // You need to call this function at least more often than the 100ms in the enable call to prevent a reboot
-    watchdog_update();
+    // PIO Blinking example
+    PIO pio = pio0;
+    uint offset = pio_add_program(pio, &blink_program);
+    blink_pin_forever(pio, 0, offset, PICO_DEFAULT_LED_PIN);
+    // For more pio examples see https://github.com/raspberrypi/pico-examples/tree/master/pio
+
+    // Timer example code - This example fires off the callback after 2000ms
+    add_alarm_in_ms(500, alarm_callback, NULL, false);
+    // For more examples of timer use see https://github.com/raspberrypi/pico-examples/tree/master/timer
+
+    // A device like Pico that uses a GPIO for the LED will define PICO_DEFAULT_LED_PIN
+    // so we can use normal GPIO functionality to turn the led on and off
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
     while (true)
     {
-        if (do_print) {
-            do_print = false;
-            printf("Hello, world!\n");
-        }
+        // You need to call this function at least more often than the 100ms in the enable call to prevent a reboot
         watchdog_update();
-        sleep_ms(10);
+
+        if (!pio_sm_is_rx_fifo_empty(pio, 0)) {
+            printf("%d\n", pio_sm_get(pio, 0));
+        }
     }
+
+    // Interpolator example code
+    interp_config cfg = interp_default_config();
+    // Now use the various interpolator library functions for your use case
+    // e.g. interp_config_clamp(&cfg, true);
+    //      interp_config_shift(&cfg, 2);
+    // Then set the config
+    interp_set_config(interp0, 0, &cfg);
+    // For examples of interpolator use see https://github.com/raspberrypi/pico-examples/tree/master/interp
 }
