@@ -28,43 +28,43 @@ set(PICO_BOARD pico CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-project(test C CXX ASM)
+project(pico-squirt C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(test test.cpp )
+add_executable(pico-squirt main.cpp )
 
-pico_set_program_name(test "test")
-pico_set_program_version(test "0.1")
+pico_set_program_name(pico-squirt "pico-squirt")
+pico_set_program_version(pico-squirt "0.1")
 
 # Generate PIO header
-pico_generate_pio_header(test ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
+# pico_generate_pio_header(pico-squirt ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
 
 # Modify the below lines to enable/disable output over UART/USB
-pico_enable_stdio_uart(test 0)
-pico_enable_stdio_usb(test 1)
+pico_enable_stdio_uart(pico-squirt 0)
+pico_enable_stdio_usb(pico-squirt 1)
 
 # Add the standard library to the build
-target_link_libraries(test
+target_link_libraries(pico-squirt
         pico_stdlib)
 
 # Add the standard include files to the build
-target_include_directories(test PRIVATE
+target_include_directories(pico-squirt PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
 
 # Add any user requested libraries
-target_link_libraries(test 
+target_link_libraries(pico-squirt 
         hardware_pio
         hardware_interp
         hardware_timer
         hardware_watchdog
         )
 
-pico_add_extra_outputs(test)
+pico_add_extra_outputs(pico-squirt)
 
 # Select a 200Mhz clock
 add_compile_definitions(SYS_CLK_MHZ=200)
