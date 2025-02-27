@@ -155,7 +155,7 @@ int main()
     add_alarm_in_ms(500, alarm_callback, NULL, false);
     // For more examples of timer use see https://github.com/raspberrypi/pico-examples/tree/master/timer
 
-    uint32_t ts_last, delta_last;
+    uint32_t ts_prev, delta_prev;
     uint sync_step = 0, sync_count = 0;
 
     while (true)
@@ -166,49 +166,45 @@ int main()
         uint32_t ts_now;
         if (queue_try_remove(&input_queue, &ts_now))
         {
-            uint32_t delta = ts_now - ts_last;
+            uint32_t delta = ts_now - ts_prev;
             uint32_t next_timeout_us = 0;
             switch (sync_step)
             {
             case 0: // first timestamp
                 sync_step = 1;
                 sync_count = 0;
-                // rpm = 100 (arbitrary target)
+                // rpm = 50 (arbitrary target)
                 // n_pulses = 24 pulse/rotation
                 // n_cycles = 2 (1=crank, 2=cam)
                 // (60'000 / rpm / n_pulses * n_cycles) ms
-                next_timeout_us = 50'000; // 50ms
+                next_timeout_us = 100'000; // 100ms
                 break;
 
             case 1: // first delta
                 sync_step = 2;
-                // normal pulse @ 100us, expect normal pulse @ 125us
-                next_timeout_us = delta * 5 / 4;
+                next_timeout_us = delta * 5 / 4; // normal pulse @ 125ms
                 break;
 
             case 2:                               // confirm delta
-                if (delta > (delta_last * 3 / 4)) // expect at least 75us
+                if (delta > (delta_prev * 3 / 4)) // expect at least 75ms
                 {
                     sync_step = 3;
                 }
-                // normal pulse @ 100us, expect longer pulse @ 250us
-                next_timeout_us = delta * 10 / 4;
+                next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
                 break;
 
             case 3:                               // wait for longer delta
-                if (delta > (delta_last * 7 / 4)) // expect at least 175us
+                if (delta > (delta_prev * 7 / 4)) // expect at least 175ms
                 {
                     sync_step = 4;
                     sync_count = 1;
-                    delta = (delta + 1) / 2; // longer delta detected, divide by 2
-                    // normal pulse @ 100us, expect normal pulse @ 125us
-                    next_timeout_us = delta * 5 / 4;
+                    delta = (delta + 1) / 2;         // longer delta detected, divide by 2
+                    next_timeout_us = delta * 5 / 4; // normal pulse @ 125ms
                 }
                 else
                 {
-                    sync_count = 0; // challenge failed, sync loss
-                    // normal pulse @ 100us, expect longer pulse @ 250us
-                    next_timeout_us = delta * 10 / 4;
+                    sync_count = 0;                   // challenge failed, sync loss
+                    next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
                 }
                 break;
 
@@ -216,14 +212,12 @@ int main()
                 sync_count = (sync_count < (n_pulses - n_missing)) ? sync_count + 1 : 1;
                 if (sync_count == (n_pulses - n_missing))
                 {
-                    sync_step = 3; // challenge longer pulse
-                    // normal pulse @ 100us, expect longer pulse @ 250us
-                    next_timeout_us = delta * 10 / 4;
+                    sync_step = 3;                    // challenge longer pulse
+                    next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
                 }
                 else
                 {
-                    // normal pulse @ 100us, expect normal pulse @ 125us
-                    next_timeout_us = delta * 5 / 4;
+                    next_timeout_us = delta * 5 / 4; // normal pulse @ 125ms
                 }
                 break;
 
@@ -232,8 +226,8 @@ int main()
 
             update_output_alarm(next_timeout_us, &sync_step); // schedule timeout
             printf("%d, %d, %d\n", sync_step, sync_count, delta);
-            delta_last = delta;
-            ts_last = ts_now;
+            delta_prev = delta;
+            ts_prev = ts_now;
         }
     }
 }
