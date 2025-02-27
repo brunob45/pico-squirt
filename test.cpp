@@ -1,14 +1,57 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
+#include "pico/util/queue.h"
 #include "hardware/timer.h"
 #include "hardware/watchdog.h"
-#include "pico/util/queue.h"
+#include "hardware/structs/ioqspi.h"
 
 const uint LED1 = 16;
 const uint LED2 = 17;
 
+const uint n_pulses = 24;
+const uint n_missing = 1;
+
 queue_t input_queue;
 volatile alarm_id_t timeout_alarm = 0;
+volatile bool button_pressed = false;
+
+// https://github.com/raspberrypi/pico-examples/tree/master/picoboard/button
+bool __no_inline_not_in_flash_func(get_bootsel_button)()
+{
+    const uint CS_PIN_INDEX = 1;
+
+    // Must disable interrupts, as interrupt handlers may be in flash, and we
+    // are about to temporarily disable flash access!
+    uint32_t flags = save_and_disable_interrupts();
+
+    // Set chip select to Hi-Z
+    hw_write_masked(&ioqspi_hw->io[CS_PIN_INDEX].ctrl,
+                    GPIO_OVERRIDE_LOW << IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_LSB,
+                    IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_BITS);
+
+    // Note we can't call into any sleep functions in flash right now
+    for (volatile int i = 0; i < 1000; ++i)
+        ;
+
+    // The HI GPIO registers in SIO can observe and control the 6 QSPI pins.
+    // Note the button pulls the pin *low* when pressed.
+#if PICO_RP2040
+#define CS_BIT (1u << 1)
+#else
+#define CS_BIT SIO_GPIO_HI_IN_QSPI_CSN_BITS
+#endif
+    bool button_state = !(sio_hw->gpio_hi_in & CS_BIT);
+
+    // Need to restore the state of chip select, else we are going to have a
+    // bad time when we return to code in flash!
+    hw_write_masked(&ioqspi_hw->io[CS_PIN_INDEX].ctrl,
+                    GPIO_OVERRIDE_NORMAL << IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_LSB,
+                    IO_QSPI_GPIO_QSPI_SS_CTRL_OEOVER_BITS);
+
+    restore_interrupts(flags);
+
+    return button_state;
+}
 
 void gpio_init_out(uint pin)
 {
@@ -19,9 +62,44 @@ void gpio_init_out(uint pin)
 int64_t alarm_callback(alarm_id_t, void *)
 {
     static uint8_t cpt = 0;
-    gpio_put(LED1, (cpt & 1) && (cpt >= 2));
-    cpt = (cpt + 1) % 48; // 24 teeth
-    return -2'000;        // wait for another 2ms
+    static uint button_count = 0;
+    if (!button_pressed)
+    {
+        gpio_put(LED1, (cpt & 1) && (cpt >= (2 * n_missing)));
+        cpt = (cpt + 1) % (n_pulses * 2);
+    }
+    const bool button = get_bootsel_button();
+    if (button_pressed)
+    {
+        if (!button)
+        {
+            button_count += 1;
+        }
+        else
+        {
+            button_count = 0;
+        }
+        if (button_count >= 3)
+        {
+            button_pressed = false;
+        }
+    }
+    else
+    {
+        if (button)
+        {
+            button_count += 1;
+        }
+        else
+        {
+            button_count = 0;
+        }
+        if (button_count >= 3)
+        {
+            button_pressed = true;
+        }
+    }
+    return -2'000; // wait for another 2ms
 }
 
 int64_t sync_loss_cb(alarm_id_t, void *data)
@@ -48,19 +126,19 @@ void update_output_alarm(uint32_t us, uint *step)
 bool about_same(uint32_t delta_now, uint32_t delta_prev)
 {
     // 75 - 125%
-    return (delta_now > (delta_prev * (3 / 4))) && (delta_now < (delta_prev * (5 / 4)));
+    return (delta_now > (delta_prev * 3 / 4)) && (delta_now < (delta_prev * 5 / 4));
 }
 
 bool about_half(uint32_t delta_now, uint32_t delta_prev)
 {
     // 37-63%
-    return (delta_now > (delta_prev * (3 / 8))) && (delta_now < (delta_prev * (5 / 8)));
+    return (delta_now > (delta_prev * 3 / 8)) && (delta_now < (delta_prev * 5 / 8));
 }
 
 bool about_double(uint32_t delta_now, uint32_t delta_prev)
 {
     // 175-225%
-    return (delta_now > (delta_prev * (7 / 4))) && (delta_now < (delta_prev * (9 / 4)));
+    return (delta_now > (delta_prev * 7 / 4)) && (delta_now < (delta_prev * 9 / 4));
 }
 
 int main()
@@ -121,7 +199,7 @@ int main()
                 break;
             case 1: // first delta
                 sync_step = 2;
-                // normal delta @ 100us, expect next pulse before 125us
+                // normal pulse @ 100us, expect normal pulse @ 125us
                 next_timeout_us = delta * 5 / 4;
                 break;
             case 2: // confirm delta
@@ -129,34 +207,39 @@ int main()
                 {
                     sync_step = 3;
                 }
-                // normal delta @ 100us, expect next pulse before 125us
+                // normal pulse @ 100us, expect normal pulse @ 125us
                 next_timeout_us = delta * 5 / 4;
                 break;
             case 3: // wait for double delta
                 if (about_double(delta, delta_last))
                 {
                     sync_step = 4;
-                    sync_count = 0;
-                    // longer delta @ 200us, expect next pulse before 125us
+                    sync_count = 1;
+                    // longer pulse @ 200us, expect normal pulse @ 125us
                     next_timeout_us = delta * 5 / 8;
                 }
                 else
                 {
-                    // normal delta @ 100us, expect next pulse before 250us
+                    // normal pulse @ 100us, expect longer pulse @ 250us
                     next_timeout_us = delta * 10 / 4;
-                    break;
                 }
+                break;
             case 4: // full sync
-                sync_count = (sync_count < (24 - 1)) ? sync_count + 1 : 1;
+                sync_count = (sync_count < (n_pulses - n_missing)) ? sync_count + 1 : 1;
                 if (sync_count == 1)
                 {
-                    // longer delta @ 200us, expect next pulse before 125us
+                    // longer pulse @ 200us, expect normal pulse @ 125us
                     next_timeout_us = delta * 5 / 8;
+                }
+                else if (sync_count == (n_pulses - n_missing))
+                {
+                    // normal pulse @ 100us, expect longer pulse @ 250us
+                    next_timeout_us = delta * 10 / 4;
                 }
                 else
                 {
-                    // normal delta @ 100us, expect next pulse before 250us
-                    next_timeout_us = delta * 10 / 4;
+                    // normal pulse @ 100us, expect normal pulse @ 125us
+                    next_timeout_us = delta * 5 / 4;
                 }
                 break;
             default:;
