@@ -123,24 +123,6 @@ void update_output_alarm(uint32_t us, uint *step)
     timeout_alarm = add_alarm_in_us(us, sync_loss_cb, step, true);
 }
 
-bool about_same(uint32_t delta_now, uint32_t delta_prev)
-{
-    // 75 - 125%
-    return (delta_now > (delta_prev * 3 / 4)) && (delta_now < (delta_prev * 5 / 4));
-}
-
-bool about_half(uint32_t delta_now, uint32_t delta_prev)
-{
-    // 37-63%
-    return (delta_now > (delta_prev * 3 / 8)) && (delta_now < (delta_prev * 5 / 8));
-}
-
-bool about_double(uint32_t delta_now, uint32_t delta_prev)
-{
-    // 175-225%
-    return (delta_now > (delta_prev * 7 / 4)) && (delta_now < (delta_prev * 9 / 4));
-}
-
 int main()
 {
     stdio_init_all();
@@ -184,7 +166,7 @@ int main()
         uint32_t ts_now;
         if (queue_try_remove(&input_queue, &ts_now))
         {
-            const uint32_t delta = ts_now - ts_last;
+            uint32_t delta = ts_now - ts_last;
             uint32_t next_timeout_us = 0;
             switch (sync_step)
             {
@@ -194,45 +176,47 @@ int main()
                 // rpm = 100 (arbitrary target)
                 // n_pulses = 24 pulse/rotation
                 // n_cycles = 2 (1=crank, 2=cam)
-                // 60'000 / rpm / n_pulses * n_cycles
+                // (60'000 / rpm / n_pulses * n_cycles) ms
                 next_timeout_us = 50'000; // 50ms
                 break;
+
             case 1: // first delta
                 sync_step = 2;
                 // normal pulse @ 100us, expect normal pulse @ 125us
                 next_timeout_us = delta * 5 / 4;
                 break;
-            case 2: // confirm delta
-                if (about_same(delta, delta_last))
+
+            case 2:                               // confirm delta
+                if (delta > (delta_last * 3 / 4)) // expect at least 75us
                 {
                     sync_step = 3;
                 }
-                // normal pulse @ 100us, expect normal pulse @ 125us
-                next_timeout_us = delta * 5 / 4;
+                // normal pulse @ 100us, expect longer pulse @ 250us
+                next_timeout_us = delta * 10 / 4;
                 break;
-            case 3: // wait for double delta
-                if (about_double(delta, delta_last))
+
+            case 3:                               // wait for longer delta
+                if (delta > (delta_last * 7 / 4)) // expect at least 175us
                 {
                     sync_step = 4;
                     sync_count = 1;
-                    // longer pulse @ 200us, expect normal pulse @ 125us
-                    next_timeout_us = delta * 5 / 8;
+                    delta = (delta + 1) / 2; // longer delta detected, divide by 2
+                    // normal pulse @ 100us, expect normal pulse @ 125us
+                    next_timeout_us = delta * 5 / 4;
                 }
                 else
                 {
+                    sync_count = 0; // challenge failed, sync loss
                     // normal pulse @ 100us, expect longer pulse @ 250us
                     next_timeout_us = delta * 10 / 4;
                 }
                 break;
+
             case 4: // full sync
                 sync_count = (sync_count < (n_pulses - n_missing)) ? sync_count + 1 : 1;
-                if (sync_count == 1)
+                if (sync_count == (n_pulses - n_missing))
                 {
-                    // longer pulse @ 200us, expect normal pulse @ 125us
-                    next_timeout_us = delta * 5 / 8;
-                }
-                else if (sync_count == (n_pulses - n_missing))
-                {
+                    sync_step = 3; // challenge longer pulse
                     // normal pulse @ 100us, expect longer pulse @ 250us
                     next_timeout_us = delta * 10 / 4;
                 }
@@ -242,6 +226,7 @@ int main()
                     next_timeout_us = delta * 5 / 4;
                 }
                 break;
+
             default:;
             }
 
