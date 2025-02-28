@@ -40,3 +40,64 @@ bool __no_inline_not_in_flash_func(get_bootsel_button)()
 
     return button_state;
 }
+
+int64_t pulse_generation(alarm_id_t, void * data)
+{
+    static uint8_t cpt = 0;
+    static uint button_count = 0;
+    static bool button_pressed;
+
+    if (data && !button_pressed)
+    {
+        uint* pin = (uint*)data;
+        gpio_put(*pin, (cpt & 1) && (cpt >= (2 * 1)));
+        cpt = (cpt + 1) % (24 * 2);
+    }
+    const bool button = get_bootsel_button();
+    if (button_pressed)
+    {
+        if (!button)
+        {
+            button_count += 1;
+        }
+        else
+        {
+            button_count = 0;
+        }
+        if (button_count >= 3)
+        {
+            button_pressed = false;
+        }
+    }
+    else
+    {
+        if (button)
+        {
+            button_count += 1;
+        }
+        else
+        {
+            button_count = 0;
+        }
+        if (button_count >= 3)
+        {
+            button_pressed = true;
+        }
+    }
+    return -2'000; // wait for another 2ms
+}
+
+void simulation_enable(uint pin)
+{
+    gpio_init(pin);
+    gpio_set_dir(pin, GPIO_OUT);
+
+    // Timer example code - This example fires off the callback after 2000ms
+    add_alarm_in_ms(500, pulse_generation, &pin, false);
+    // For more examples of timer use see https://github.com/raspberrypi/pico-examples/tree/master/timer
+}
+
+void simulation_update()
+{
+    return; // do nothing
+}
