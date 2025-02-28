@@ -35,7 +35,10 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(pico-squirt main.cpp )
+add_executable(pico-squirt
+    src/main.cpp
+    src/button.cpp
+    )
 
 pico_set_program_name(pico-squirt "pico-squirt")
 pico_set_program_version(pico-squirt "0.1")
@@ -53,7 +56,7 @@ target_link_libraries(pico-squirt
 
 # Add the standard include files to the build
 target_include_directories(pico-squirt PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
 # Add any user requested libraries
