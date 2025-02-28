@@ -45,7 +45,7 @@ pico_set_program_name(pico-squirt "pico-squirt")
 pico_set_program_version(pico-squirt "0.1")
 
 # Generate PIO header
-# pico_generate_pio_header(pico-squirt ${CMAKE_CURRENT_LIST_DIR}/blink.pio)
+# pico_generate_pio_header(pico-squirt ${CMAKE_CURRENT_LIST_DIR}/pio/blink.pio)
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(pico-squirt 0)
