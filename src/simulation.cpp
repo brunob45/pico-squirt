@@ -96,7 +96,7 @@ void simulation_enable(uint pin)
     gpio_set_dir(_pin, GPIO_OUT);
 
     // Negative timeout means exact delay (rather than delay between callbacks)
-    add_repeating_timer_ms(-4, pulse_generation, NULL, &_rt);
+    add_repeating_timer_us(-4000, pulse_generation, NULL, &_rt);
     // For more examples of timer use see https://github.com/raspberrypi/pico-examples/tree/master/timer
 }
 

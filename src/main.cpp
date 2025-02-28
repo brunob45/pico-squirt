@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
-#include "pico/util/queue.h"
-#include "hardware/timer.h"
 #include "hardware/watchdog.h"
 
 #include "simulation.h"
@@ -11,11 +9,10 @@ int main()
 {
     stdio_init_all();
 
-    // Watchdog example code
+    // Watchdog example code - https://github.com/raspberrypi/pico-examples/tree/master/watchdog
     if (watchdog_caused_reboot())
     {
         printf("Rebooted by Watchdog!\n");
-        // Whatever action you may take if a watchdog caused a reboot
     }
 
     // Enable the watchdog, requiring the watchdog to be updated every 100ms or the chip will reboot
@@ -25,7 +22,6 @@ int main()
     const uint LED1 = 16;
     simulation_enable(LED1);
     decoder_enable(LED1);
-
 
     while (true)
     {
