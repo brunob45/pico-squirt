@@ -38,6 +38,7 @@ pico_sdk_init()
 add_executable(pico-squirt
     src/main.cpp
     src/button.cpp
+    src/decoder.cpp
     )
 
 pico_set_program_name(pico-squirt "pico-squirt")
