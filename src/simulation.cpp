@@ -3,7 +3,8 @@
 #include "hardware/sync.h"
 #include "hardware/structs/ioqspi.h"
 
-const uint LED1 = 16;
+static uint _pin;
+static repeating_timer_t _rt;
 
 // https://github.com/raspberrypi/pico-examples/tree/master/picoboard/button
 bool __no_inline_not_in_flash_func(get_bootsel_button)()
@@ -43,7 +44,7 @@ bool __no_inline_not_in_flash_func(get_bootsel_button)()
     return button_state;
 }
 
-int64_t pulse_generation(alarm_id_t, void *)
+bool pulse_generation(repeating_timer_t*)
 {
     static uint8_t cpt = 0;
     static uint button_count = 0;
@@ -51,7 +52,7 @@ int64_t pulse_generation(alarm_id_t, void *)
 
     if (!button_pressed)
     {
-        gpio_put(LED1, (cpt & 1) && (cpt >= (2 * 1)));
+        gpio_put(_pin, (cpt & 1) && (cpt >= (2 * 1)));
         cpt = (cpt + 1) % (24 * 2);
     }
     const bool button = get_bootsel_button();
@@ -85,16 +86,18 @@ int64_t pulse_generation(alarm_id_t, void *)
             button_pressed = true;
         }
     }
-    return -2'000; // wait for another 2ms
+    return true; // continue forever
 }
 
 void simulation_enable(uint pin)
 {
-    gpio_init(LED1);
-    gpio_set_dir(LED1, GPIO_OUT);
+    _pin = pin;
+    gpio_init(_pin);
+    gpio_set_dir(_pin, GPIO_OUT);
 
-    // Timer example code - This example fires off the callback after 2000ms
-    add_alarm_in_ms(500, pulse_generation, NULL, false);
+    // Negative timeout means exact delay (rather than delay between callbacks)
+    add_repeating_timer_ms(-4, pulse_generation, NULL, &_rt);
     // For more examples of timer use see https://github.com/raspberrypi/pico-examples/tree/master/timer
 }
+
 void simulation_update() {}
