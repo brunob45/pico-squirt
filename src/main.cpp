@@ -9,26 +9,16 @@
 
 const uint LED1 = 16;
 
-queue_t input_queue;
-volatile bool button_pressed = false;
-
-void gpio_init_out(uint pin)
-{
-    gpio_init(pin);
-    gpio_set_dir(pin, GPIO_OUT);
-}
-
-int64_t alarm_callback(alarm_id_t, void *data)
+int64_t pulse_generation(alarm_id_t, void *)
 {
     static uint8_t cpt = 0;
     static uint button_count = 0;
-
-    decoder_t *d = (decoder_t *)data;
+    static bool button_pressed;
 
     if (!button_pressed)
     {
-        gpio_put(LED1, (cpt & 1) && (cpt >= (2 * d->n_missing)));
-        cpt = (cpt + 1) % (d->n_pulses * 2);
+        gpio_put(LED1, (cpt & 1) && (cpt >= (2 * 1)));
+        cpt = (cpt + 1) % (24 * 2);
     }
     const bool button = get_bootsel_button();
     if (button_pressed)
@@ -79,29 +69,19 @@ int main()
     // second arg is pause on debug which means the watchdog will pause when stepping through code
     watchdog_enable(100, 1);
 
-    gpio_init_out(LED1);
+    gpio_init(LED1);
+    gpio_set_dir(LED1, GPIO_OUT);
 
-    {
-        queue_init(&input_queue, sizeof(uint32_t), 2);
-        gpio_irq_callback_t cb = [](uint, uint32_t)
-        {
-            const uint32_t timestamp = time_us_32();
-            queue_try_add(&input_queue, &timestamp);
-        };
-        gpio_set_irq_enabled_with_callback(LED1, GPIO_IRQ_EDGE_RISE, true, cb);
-    }
-
-    decoder_t d;
-    decoder_enable(&d);
+    decoder_enable(LED1);
 
     // Timer example code - This example fires off the callback after 2000ms
-    add_alarm_in_ms(500, alarm_callback, &d, false);
+    add_alarm_in_ms(500, pulse_generation, NULL, false);
     // For more examples of timer use see https://github.com/raspberrypi/pico-examples/tree/master/timer
 
     while (true)
     {
         // You need to call this function at least more often than the 100ms in the enable call to prevent a reboot
         watchdog_update();
-        decoder_update(&d);
+        decoder_update();
     }
 }
