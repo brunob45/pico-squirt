@@ -22,8 +22,10 @@ int main()
     // second arg is pause on debug which means the watchdog will pause when stepping through code
     watchdog_enable(100, 1);
 
-    simulation_enable(16);
-    decoder_enable(17);
+    const uint LED1 = 16;
+    simulation_enable(LED1);
+    decoder_enable(LED1);
+
 
     while (true)
     {

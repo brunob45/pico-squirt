@@ -3,7 +3,7 @@
 #include "hardware/sync.h"
 #include "hardware/structs/ioqspi.h"
 
-static uint _pin;
+const uint LED1 = 16;
 
 // https://github.com/raspberrypi/pico-examples/tree/master/picoboard/button
 bool __no_inline_not_in_flash_func(get_bootsel_button)()
@@ -51,7 +51,7 @@ int64_t pulse_generation(alarm_id_t, void *)
 
     if (!button_pressed)
     {
-        gpio_put(_pin, (cpt & 1) && (cpt >= (2 * 1)));
+        gpio_put(LED1, (cpt & 1) && (cpt >= (2 * 1)));
         cpt = (cpt + 1) % (24 * 2);
     }
     const bool button = get_bootsel_button();
@@ -90,16 +90,11 @@ int64_t pulse_generation(alarm_id_t, void *)
 
 void simulation_enable(uint pin)
 {
-    _pin = pin;
-    gpio_init(_pin);
-    gpio_set_dir(_pin, GPIO_OUT);
+    gpio_init(LED1);
+    gpio_set_dir(LED1, GPIO_OUT);
 
     // Timer example code - This example fires off the callback after 2000ms
     add_alarm_in_ms(500, pulse_generation, NULL, false);
     // For more examples of timer use see https://github.com/raspberrypi/pico-examples/tree/master/timer
 }
-
-void simulation_update()
-{
-    return; // do nothing
-}
+void simulation_update() {}
