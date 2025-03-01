@@ -12,6 +12,10 @@ $ rustup target add thumbv6m-none-eabi
 ```
 
 ## Create project
+```console
+$ cargo new your_crate --lib
+```
+
 ```toml
 [lib]
 name = "your_crate"

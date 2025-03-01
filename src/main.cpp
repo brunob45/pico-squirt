@@ -4,6 +4,7 @@
 
 #include "simulation.h"
 #include "decoder.h"
+#include "test_bindings.h"
 
 int main()
 {
@@ -14,6 +15,8 @@ int main()
     {
         printf("Rebooted by Watchdog!\n");
     }
+
+    uint result = add(1, 2);
 
     // Enable the watchdog, requiring the watchdog to be updated every 100ms or the chip will reboot
     // second arg is pause on debug which means the watchdog will pause when stepping through code

@@ -55,11 +55,11 @@ pico_enable_stdio_usb(pico-squirt 1)
 
 # Add the standard library to the build
 target_link_libraries(pico-squirt
-        pico_stdlib)
+    pico_stdlib)
 
 # Add the standard include files to the build
 target_include_directories(pico-squirt PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
 # Add any user requested libraries
@@ -74,3 +74,31 @@ pico_add_extra_outputs(pico-squirt)
 
 # Select a 200Mhz clock
 add_compile_definitions(SYS_CLK_MHZ=200)
+
+# Add rust library
+# https://stackoverflow.com/a/31175323
+
+# Enable ExternalProject CMake module
+include(ExternalProject)
+
+# Set default ExternalProject root directory
+set_directory_properties(PROPERTIES EP_PREFIX ${CMAKE_BINARY_DIR}/rust)
+
+# Add rust_example as a CMake target
+ExternalProject_Add(
+    rust_example
+    DOWNLOAD_COMMAND ""
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND cargo build COMMAND cargo build --release
+    BINARY_DIR "${CMAKE_SOURCE_DIR}/rust/rust_example"
+    INSTALL_COMMAND ""
+    LOG_BUILD ON)
+
+# Create dependency of Example on rust_example
+add_dependencies(pico-squirt rust_example)
+
+# Add any user requested libraries
+target_link_libraries(pico-squirt
+    debug "${CMAKE_SOURCE_DIR}/rust/rust_example/target/thumbv6m-none-eabi/debug/librust_example.a"
+    optimized "${CMAKE_SOURCE_DIR}/rust/rust_example/target/thumbv6m-none-eabi/release/librust_example.a"
+    )
