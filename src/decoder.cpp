@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
+#include "pico/util/queue.h"
+#include "pico/sem.h"
 
 #include "decoder.h"
 
@@ -16,6 +18,7 @@ typedef struct
     uint target_us;
     uint pw;
     bool running = false;
+    semaphore_t sem;
 } Trigger;
 
 static Trigger triggers[2];
@@ -52,10 +55,11 @@ void decoder_enable(uint pin)
 
     uint i;
     for (i = 0; i < (n_pulses - n_missing); i++)
-    {
         pulse_angles[i] = i * 7200UL / n_pulses;
-    }
     pulse_angles[i] = 7200U;
+
+    for (uint i = 0; i < 2; i++)
+        sem_init(&triggers[i].sem, 1, 1);
 
     queue_init(&queue, sizeof(uint32_t), 2);
     gpio_irq_callback_t cb = [](uint, uint32_t)
@@ -154,12 +158,16 @@ uint find_pulse(uint angle)
 
 void compute_target(Trigger *target, uint end_deg, uint pw)
 {
-    const uint pulse_width_deg = pw * 7200UL / (delta_prev * n_pulses);
-    const uint target_deg = end_deg - pulse_width_deg;
-    target->target_n = find_pulse(target_deg);
-    const uint error_deg = target_deg - pulse_angles[target->target_n];
-    target->target_us = error_deg * delta_prev * n_pulses / 7200UL;
-    target->pw = pw;
+    if (sem_try_acquire(&target->sem))
+    {
+        const uint pulse_width_deg = pw * 7200UL / (delta_prev * n_pulses);
+        const uint target_deg = end_deg - pulse_width_deg;
+        target->target_n = find_pulse(target_deg);
+        const uint error_deg = target_deg - pulse_angles[target->target_n];
+        target->target_us = error_deg * delta_prev * n_pulses / 7200UL;
+        target->pw = pw;
+        sem_release(&target->sem);
+    }
 }
 
 void decoder_update()
@@ -171,10 +179,22 @@ void decoder_update()
             alarm_callback_t cb = [](alarm_id_t, void *data) -> int64_t
             {
                 Trigger *t = (Trigger *)data;
-                t->running = !t->running;
-                gpio_put(LED2, t->running);
-                return (t->running) ? (t->pw) : 0;
+                if (t->running)
+                {
+                    gpio_clr_mask(1 << LED2);
+                    t->running = false;
+                    return 0;
+                }
+                else
+                {
+                    gpio_set_mask(1 << LED2);
+                    t->running = true;
+                    const uint pw = t->pw;
+                    sem_release(&t->sem); // allow compute_target, alarm has fired
+                    return pw;
+                }
             };
+            sem_try_acquire(&triggers[0].sem); // block compute_target while alarm is pending
             add_alarm_in_us(triggers[0].target_us, cb, &triggers[0], true);
         }
 
