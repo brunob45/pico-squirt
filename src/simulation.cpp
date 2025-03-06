@@ -44,7 +44,7 @@ bool __no_inline_not_in_flash_func(get_bootsel_button)()
     return button_state;
 }
 
-bool pulse_generation(repeating_timer_t*)
+bool pulse_generation(repeating_timer_t *)
 {
     static uint8_t cpt = 0;
     static uint button_count = 0;
@@ -96,7 +96,9 @@ void simulation_enable(uint pin)
     gpio_set_dir(_pin, GPIO_OUT);
 
     // Negative timeout means exact delay (rather than delay between callbacks)
-    add_repeating_timer_us(-4000, pulse_generation, NULL, &_rt);
+    const uint rpm = 5000;
+    int64_t pw = 60'000'000 * 2 / rpm / 24;
+    add_repeating_timer_us(-pw / 2, pulse_generation, NULL, &_rt);
     // For more examples of timer use see https://github.com/raspberrypi/pico-examples/tree/master/timer
 }
 
