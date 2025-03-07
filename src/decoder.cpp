@@ -11,7 +11,12 @@ static volatile alarm_id_t timeout_alarm = 0;
 static queue_t queue;
 static uint pulse_angles[60];
 
-typedef struct
+const uint FULL_CYCLE = 7200UL;
+const uint N_PULSES = 24;
+const uint N_MISSING = 1;
+const uint LED2 = 17;
+
+struct Trigger
 {
     // uint target_deg;
     int target_n = -1;
@@ -19,13 +24,28 @@ typedef struct
     uint pw;
     bool running = false;
     semaphore_t sem;
-} Trigger;
+
+    static int64_t callback(alarm_id_t, void *data)
+    {
+        Trigger *t = (Trigger *)data;
+        if (t->running)
+        {
+            gpio_clr_mask(1 << LED2);
+            t->running = false;
+            return 0;
+        }
+        else
+        {
+            gpio_set_mask(1 << LED2);
+            t->running = true;
+            const uint pw = t->pw;
+            sem_release(&t->sem); // allow compute_target, alarm has fired
+            return pw;
+        }
+    }
+};
 
 static Trigger triggers[2];
-
-const uint n_pulses = 24;
-const uint n_missing = 1;
-const uint LED2 = 17;
 
 static int64_t sync_loss_cb(alarm_id_t, void *data)
 {
@@ -54,9 +74,9 @@ void decoder_enable(uint pin)
     gpio_set_dir(LED2, GPIO_OUT);
 
     uint i;
-    for (i = 0; i < (n_pulses - n_missing); i++)
-        pulse_angles[i] = i * 7200UL / n_pulses;
-    pulse_angles[i] = 7200U;
+    for (i = 0; i < (N_PULSES - N_MISSING); i++)
+        pulse_angles[i] = i * FULL_CYCLE / N_PULSES;
+    pulse_angles[i] = FULL_CYCLE;
 
     for (uint i = 0; i < 2; i++)
         sem_init(&triggers[i].sem, 1, 1);
@@ -118,8 +138,8 @@ static bool check_event()
             break;
 
         case 4: // full sync
-            sync_count = (sync_count < (n_pulses - n_missing)) ? sync_count + 1 : 1;
-            if (sync_count == (n_pulses - n_missing))
+            sync_count = (sync_count < (N_PULSES - N_MISSING)) ? sync_count + 1 : 1;
+            if (sync_count == (N_PULSES - N_MISSING))
             {
                 sync_step = 3;                    // challenge longer pulse
                 next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
@@ -146,7 +166,7 @@ static bool check_event()
 uint find_pulse(uint angle)
 {
     uint result;
-    for (uint i = 0; i < (n_pulses - n_missing); i++)
+    for (uint i = 0; i < (N_PULSES - N_MISSING); i++)
     {
         if (pulse_angles[i] < angle)
         {
@@ -160,11 +180,13 @@ void compute_target(Trigger *target, uint end_deg, uint pw)
 {
     if (sem_try_acquire(&target->sem))
     {
-        const uint pulse_width_deg = pw * 7200UL / (delta_prev * n_pulses);
-        const uint target_deg = end_deg - pulse_width_deg;
+        const uint pulse_width_deg = pw * FULL_CYCLE / (delta_prev * N_PULSES);
+        const uint target_deg = (end_deg >= pulse_width_deg)
+                                    ? (end_deg - pulse_width_deg)
+                                    : (FULL_CYCLE + end_deg - pulse_width_deg);
         target->target_n = find_pulse(target_deg);
         const uint error_deg = target_deg - pulse_angles[target->target_n];
-        target->target_us = error_deg * delta_prev * n_pulses / 7200UL;
+        target->target_us = error_deg * delta_prev * N_PULSES / FULL_CYCLE;
         target->pw = pw;
         sem_release(&target->sem);
     }
@@ -172,34 +194,27 @@ void compute_target(Trigger *target, uint end_deg, uint pw)
 
 void decoder_update()
 {
+    static uint32_t last_print;
+
     if (check_event())
     {
-        if (sync_count == triggers[0].target_n)
+        for (uint i = 0; i < 2; i++)
         {
-            alarm_callback_t cb = [](alarm_id_t, void *data) -> int64_t
+            if (sync_count == triggers[i].target_n)
             {
-                Trigger *t = (Trigger *)data;
-                if (t->running)
-                {
-                    gpio_clr_mask(1 << LED2);
-                    t->running = false;
-                    return 0;
-                }
-                else
-                {
-                    gpio_set_mask(1 << LED2);
-                    t->running = true;
-                    const uint pw = t->pw;
-                    sem_release(&t->sem); // allow compute_target, alarm has fired
-                    return pw;
-                }
-            };
-            sem_try_acquire(&triggers[0].sem); // block compute_target while alarm is pending
-            add_alarm_in_us(triggers[0].target_us, cb, &triggers[0], true);
+                sem_try_acquire(&triggers[i].sem); // block compute_target while alarm is pending
+                add_alarm_in_us(triggers[i].target_us, Trigger::callback, &triggers[i], true);
+            }
         }
+    }
+    compute_target(&triggers[0], 3850, 3000);
+    compute_target(&triggers[1], 250, 3000);
 
-        compute_target(&triggers[0], 3850, 3000);
-        // compute_target(&triggers[1]);
-        printf("start:%d+%d; end:%d+%d\n", triggers[0].target_n, triggers[0].target_us, triggers[1].target_n, triggers[1].target_us);
+    if (time_us_32() - last_print >= 100'000)
+    {
+        last_print = time_us_32();
+        printf("start:%d+%d; end:%d+%d\n",
+               triggers[0].target_n, triggers[0].target_us,
+               triggers[1].target_n, triggers[1].target_us);
     }
 }
