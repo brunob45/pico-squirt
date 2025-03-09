@@ -5,15 +5,19 @@
 
 #include "decoder.h"
 
-static uint32_t ts_prev, delta_prev;
-static uint sync_step = 0, sync_count = 0;
-static volatile alarm_id_t timeout_alarm = 0;
-static queue_t queue;
-static uint pulse_angles[60];
+struct Decoder
+{
+    uint32_t ts_prev, delta_prev;
+    uint sync_step = 0, sync_count = 0;
+    volatile alarm_id_t timeout_alarm_id = 0;
+    queue_t queue;
+    uint pulse_angles[60];
 
-const uint FULL_CYCLE = 7200UL;
-const uint N_PULSES = 24;
-const uint N_MISSING = 1;
+    const uint FULL_CYCLE = 7200UL;
+    const uint N_PULSES = 24;
+    const uint N_MISSING = 1;
+} d;
+
 const uint LED2 = 17;
 
 struct Trigger
@@ -43,9 +47,7 @@ struct Trigger
             return pw;
         }
     }
-};
-
-static Trigger triggers[2];
+} triggers[2];
 
 static int64_t sync_loss_cb(alarm_id_t, void *data)
 {
@@ -61,11 +63,12 @@ static int64_t sync_loss_cb(alarm_id_t, void *data)
 
 static void update_output_alarm(uint32_t us, uint *step)
 {
-    if (timeout_alarm > 0)
+    const alarm_id_t id = d.timeout_alarm_id;
+    if (id > 0)
     {
-        cancel_alarm(timeout_alarm);
+        cancel_alarm(id);
     }
-    timeout_alarm = add_alarm_in_us(us, sync_loss_cb, step, true);
+    d.timeout_alarm_id = add_alarm_in_us(us, sync_loss_cb, step, true);
 }
 
 void decoder_enable(uint pin)
@@ -74,18 +77,18 @@ void decoder_enable(uint pin)
     gpio_set_dir(LED2, GPIO_OUT);
 
     uint i;
-    for (i = 0; i < (N_PULSES - N_MISSING); i++)
-        pulse_angles[i] = i * FULL_CYCLE / N_PULSES;
-    pulse_angles[i] = FULL_CYCLE;
+    for (i = 0; i < (d.N_PULSES - d.N_MISSING); i++)
+        d.pulse_angles[i] = i * d.FULL_CYCLE / d.N_PULSES;
+    d.pulse_angles[i] = d.FULL_CYCLE;
 
     for (uint i = 0; i < 2; i++)
         sem_init(&triggers[i].sem, 1, 1);
 
-    queue_init(&queue, sizeof(uint32_t), 2);
+    queue_init(&d.queue, sizeof(uint32_t), 2);
     gpio_irq_callback_t cb = [](uint, uint32_t)
     {
         const uint32_t timestamp = time_us_32();
-        queue_try_add(&queue, &timestamp);
+        queue_try_add(&d.queue, &timestamp);
     };
     gpio_set_irq_enabled_with_callback(pin, GPIO_IRQ_EDGE_RISE, true, cb);
 }
@@ -93,15 +96,15 @@ void decoder_enable(uint pin)
 static bool check_event()
 {
     uint32_t ts_now;
-    if (queue_try_remove(&queue, &ts_now))
+    if (queue_try_remove(&d.queue, &ts_now))
     {
-        uint32_t delta = ts_now - ts_prev;
+        uint32_t delta = ts_now - d.ts_prev;
         uint32_t next_timeout_us = 0;
-        switch (sync_step)
+        switch (d.sync_step)
         {
         case 0: // first timestamp
-            sync_step = 1;
-            sync_count = 0;
+            d.sync_step = 1;
+            d.sync_count = 0;
             // rpm = 50 (arbitrary target)
             // n_pulses = 24 pulse/rotation
             // n_cycles = 2 (1=crank, 2=cam)
@@ -110,38 +113,38 @@ static bool check_event()
             break;
 
         case 1: // first delta
-            sync_step = 2;
+            d.sync_step = 2;
             next_timeout_us = delta * 5 / 4; // normal pulse @ 125ms
             break;
 
         case 2:                               // confirm delta
-            if (delta > (delta_prev * 3 / 4)) // expect at least 75ms
+            if (delta > (d.delta_prev * 3 / 4)) // expect at least 75ms
             {
-                sync_step = 3;
+                d.sync_step = 3;
             }
             next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
             break;
 
         case 3:                               // wait for longer delta
-            if (delta > (delta_prev * 7 / 4)) // expect at least 175ms
+            if (delta > (d.delta_prev * 7 / 4)) // expect at least 175ms
             {
-                sync_step = 4;
-                sync_count = 1;
+                d.sync_step = 4;
+                d.sync_count = 1;
                 delta = (delta + 1) / 2;         // longer delta detected, divide by 2
                 next_timeout_us = delta * 5 / 4; // normal pulse @ 125ms
             }
             else
             {
-                sync_count = 0;                   // challenge failed, sync loss
+                d.sync_count = 0;                   // challenge failed, sync loss
                 next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
             }
             break;
 
         case 4: // full sync
-            sync_count = (sync_count < (N_PULSES - N_MISSING)) ? sync_count + 1 : 1;
-            if (sync_count == (N_PULSES - N_MISSING))
+            d.sync_count = (d.sync_count < (d.N_PULSES - d.N_MISSING)) ? d.sync_count + 1 : 1;
+            if (d.sync_count == (d.N_PULSES - d.N_MISSING))
             {
-                sync_step = 3;                    // challenge longer pulse
+                d.sync_step = 3;                    // challenge longer pulse
                 next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
             }
             else
@@ -152,9 +155,9 @@ static bool check_event()
 
         default:;
         }
-        update_output_alarm(next_timeout_us, &sync_step); // schedule timeout
-        delta_prev = delta;
-        ts_prev = ts_now;
+        update_output_alarm(next_timeout_us, &d.sync_step); // schedule timeout
+        d.delta_prev = delta;
+        d.ts_prev = ts_now;
         return true;
     }
     else
@@ -166,9 +169,9 @@ static bool check_event()
 uint find_pulse(uint angle)
 {
     uint result;
-    for (uint i = 0; i < (N_PULSES - N_MISSING); i++)
+    for (uint i = 0; i < (d.N_PULSES - d.N_MISSING); i++)
     {
-        if (pulse_angles[i] < angle)
+        if (d.pulse_angles[i] < angle)
         {
             result = i;
         }
@@ -180,13 +183,13 @@ void compute_target(Trigger *target, uint end_deg, uint pw)
 {
     if (sem_try_acquire(&target->sem))
     {
-        const uint pulse_width_deg = pw * FULL_CYCLE / (delta_prev * N_PULSES);
+        const uint pulse_width_deg = pw * d.FULL_CYCLE / (d.delta_prev * d.N_PULSES);
         const uint target_deg = (end_deg >= pulse_width_deg)
                                     ? (end_deg - pulse_width_deg)
-                                    : (FULL_CYCLE + end_deg - pulse_width_deg);
+                                    : (d.FULL_CYCLE + end_deg - pulse_width_deg);
         target->target_n = find_pulse(target_deg);
-        const uint error_deg = target_deg - pulse_angles[target->target_n];
-        target->target_us = error_deg * delta_prev * N_PULSES / FULL_CYCLE;
+        const uint error_deg = target_deg - d.pulse_angles[target->target_n];
+        target->target_us = error_deg * d.delta_prev * d.N_PULSES / d.FULL_CYCLE;
         target->pw = pw;
         sem_release(&target->sem);
     }
@@ -200,7 +203,7 @@ void decoder_update()
     {
         for (uint i = 0; i < 2; i++)
         {
-            if (sync_count == triggers[i].target_n)
+            if (d.sync_count == triggers[i].target_n)
             {
                 sem_try_acquire(&triggers[i].sem); // block compute_target while alarm is pending
                 add_alarm_in_us(triggers[i].target_us, Trigger::callback, &triggers[i], true);
