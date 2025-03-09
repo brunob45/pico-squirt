@@ -5,13 +5,14 @@
 #include "pico/stdlib.h"
 #include "pico/sem.h"
 
-struct Trigger
+class Trigger
 {
     int target_n, target_us, pw;
     bool running;
     semaphore_t sem;
     uint32_t pin_mask;
 
+public:
     void init(uint pin)
     {
         target_n = -1;
@@ -19,7 +20,32 @@ struct Trigger
         pin_mask = (1 << pin);
         sem_init(&sem, 1, 1);
     }
+    void update(uint pulse)
+    {
+        if (pulse == target_n)
+        {
+            sem_try_acquire(&sem); // block compute_target while alarm is pending
+            add_alarm_in_us(target_us, Trigger::callback, this, true);
+        }
+    }
+    void print_debug()
+    {
+        printf("trigger:%d+%d;", target_n, target_us);
+    }
+    bool set_target(uint pulse_n, uint pulse_us, uint pw)
+    {
+        if (!sem_try_acquire(&sem))
+        {
+            return false;
+        }
+        this->target_n = pulse_n;
+        this->target_us = pulse_us;
+        this->pw = pw;
+        sem_release(&sem);
+        return true;
+    }
 
+private:
     static int64_t callback(alarm_id_t, void *data)
     {
         if (!data)

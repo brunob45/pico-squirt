@@ -154,18 +154,15 @@ uint find_pulse(uint angle)
 
 void compute_target(Trigger *target, uint end_deg, uint pw)
 {
-    if (sem_try_acquire(&target->sem))
-    {
-        const uint pulse_width_deg = pw * d.FULL_CYCLE / (d.delta_prev * d.N_PULSES);
-        const uint target_deg = (end_deg >= pulse_width_deg)
-                                    ? (end_deg - pulse_width_deg)
-                                    : (d.FULL_CYCLE + end_deg - pulse_width_deg);
-        target->target_n = find_pulse(target_deg);
-        const uint error_deg = target_deg - d.pulse_angles[target->target_n];
-        target->target_us = error_deg * d.delta_prev * d.N_PULSES / d.FULL_CYCLE;
-        target->pw = pw;
-        sem_release(&target->sem);
-    }
+    const uint pulse_width_deg = pw * d.FULL_CYCLE / (d.delta_prev * d.N_PULSES);
+    const uint target_deg = (end_deg >= pulse_width_deg)
+                                ? (end_deg - pulse_width_deg)
+                                : (d.FULL_CYCLE + end_deg - pulse_width_deg);
+    const uint new_target_n = find_pulse(target_deg);
+    const uint error_deg = target_deg - d.pulse_angles[new_target_n];
+    const uint new_target_us = error_deg * d.delta_prev * d.N_PULSES / d.FULL_CYCLE;
+
+    target->set_target(new_target_n, new_target_us, pw);
 }
 
 void decoder_update()
@@ -176,11 +173,7 @@ void decoder_update()
     {
         for (uint i = 0; i < 2; i++)
         {
-            if (d.sync_count == triggers[i].target_n)
-            {
-                sem_try_acquire(&triggers[i].sem); // block compute_target while alarm is pending
-                add_alarm_in_us(triggers[i].target_us, Trigger::callback, &triggers[i], true);
-            }
+            triggers[0].update(d.sync_count);
         }
     }
     compute_target(&triggers[0], 3850, 3000);
@@ -189,8 +182,8 @@ void decoder_update()
     if (time_us_32() - last_print >= 100'000)
     {
         last_print = time_us_32();
-        printf("start:%d+%d; end:%d+%d\n",
-               triggers[0].target_n, triggers[0].target_us,
-               triggers[1].target_n, triggers[1].target_us);
+        triggers[0].print_debug();
+        triggers[1].print_debug();
+        printf("\n");
     }
 }
