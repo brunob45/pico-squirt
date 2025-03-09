@@ -6,78 +6,40 @@
 #include "decoder.h"
 #include "trigger.h"
 
-struct Decoder
+static queue_t* new_ts_queue;
+void new_ts_callback(uint, uint32_t)
 {
-    uint32_t ts_prev, delta_prev;
-    uint sync_step = 0, sync_count = 0;
-    volatile alarm_id_t timeout_alarm_id = 0;
-    queue_t new_ts_queue;
-    uint pulse_angles[60];
-
-    const uint FULL_CYCLE = 7200UL;
-    const uint N_PULSES = 24;
-    const uint N_MISSING = 1;
-} d;
-
-const uint LED2 = 17;
-Trigger triggers[2];
-
-static int64_t sync_loss_cb(alarm_id_t, void *data)
-{
-    gpio_xor_mask(1 << LED2);
-    if (data)
-    {
-        uint *sync_step = (uint *)data;
-        *sync_step = 0;
-    }
-
-    return 0;
+    const uint32_t new_ts = time_us_32();
+    queue_try_add(new_ts_queue, &new_ts);
 }
 
-static void update_output_alarm(uint32_t us, uint *step)
+void Decoder::enable(uint pin)
 {
-    const alarm_id_t id = d.timeout_alarm_id;
-    if (id > 0)
-    {
-        cancel_alarm(id);
-    }
-    d.timeout_alarm_id = add_alarm_in_us(us, sync_loss_cb, step, true);
-}
-
-void decoder_enable(uint pin)
-{
-    gpio_init(LED2);
-    gpio_set_dir(LED2, GPIO_OUT);
+    // gpio_init(LED2);
+    // gpio_set_dir(LED2, GPIO_OUT);
 
     uint i;
-    for (i = 0; i < (d.N_PULSES - d.N_MISSING); i++)
-        d.pulse_angles[i] = i * d.FULL_CYCLE / d.N_PULSES;
-    d.pulse_angles[i] = d.FULL_CYCLE;
+    for (i = 0; i < (N_PULSES - N_MISSING); i++)
+        pulse_angles[i] = i * FULL_CYCLE / N_PULSES;
+    pulse_angles[i] = FULL_CYCLE;
 
-    for (uint i = 0; i < 2; i++)
-        triggers[i].init(LED2+i);
-
-    queue_init(&d.new_ts_queue, sizeof(uint32_t), 2);
-    gpio_irq_callback_t cb = [](uint, uint32_t)
-    {
-        const uint32_t timestamp = time_us_32();
-        queue_try_add(&d.new_ts_queue, &timestamp);
-    };
-    gpio_set_irq_enabled_with_callback(pin, GPIO_IRQ_EDGE_RISE, true, cb);
+    new_ts_queue = &queue;
+    queue_init(&queue, sizeof(uint32_t), 2);
+    gpio_set_irq_enabled_with_callback(pin, GPIO_IRQ_EDGE_RISE, true, new_ts_callback);
 }
 
-static bool check_event()
+bool Decoder::update()
 {
     uint32_t ts_now;
-    if (queue_try_remove(&d.new_ts_queue, &ts_now))
+    if (queue_try_remove(&queue, &ts_now))
     {
-        uint32_t delta = ts_now - d.ts_prev;
+        uint32_t delta = ts_now - ts_prev;
         uint32_t next_timeout_us = 0;
-        switch (d.sync_step)
+        switch (sync_step)
         {
         case 0: // first timestamp
-            d.sync_step = 1;
-            d.sync_count = 0;
+            sync_step = 1;
+            sync_count = 0;
             // rpm = 50 (arbitrary target)
             // n_pulses = 24 pulse/rotation
             // n_cycles = 2 (1=crank, 2=cam)
@@ -86,38 +48,38 @@ static bool check_event()
             break;
 
         case 1: // first delta
-            d.sync_step = 2;
+            sync_step = 2;
             next_timeout_us = delta * 5 / 4; // normal pulse @ 125ms
             break;
 
         case 2:                               // confirm delta
-            if (delta > (d.delta_prev * 3 / 4)) // expect at least 75ms
+            if (delta > (delta_prev * 3 / 4)) // expect at least 75ms
             {
-                d.sync_step = 3;
+                sync_step = 3;
             }
             next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
             break;
 
         case 3:                               // wait for longer delta
-            if (delta > (d.delta_prev * 7 / 4)) // expect at least 175ms
+            if (delta > (delta_prev * 7 / 4)) // expect at least 175ms
             {
-                d.sync_step = 4;
-                d.sync_count = 1;
+                sync_step = 4;
+                sync_count = 1;
                 delta = (delta + 1) / 2;         // longer delta detected, divide by 2
                 next_timeout_us = delta * 5 / 4; // normal pulse @ 125ms
             }
             else
             {
-                d.sync_count = 0;                   // challenge failed, sync loss
+                sync_count = 0;                   // challenge failed, sync loss
                 next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
             }
             break;
 
         case 4: // full sync
-            d.sync_count = (d.sync_count < (d.N_PULSES - d.N_MISSING)) ? d.sync_count + 1 : 1;
-            if (d.sync_count == (d.N_PULSES - d.N_MISSING))
+            sync_count = (sync_count < (N_PULSES - N_MISSING)) ? sync_count + 1 : 1;
+            if (sync_count == (N_PULSES - N_MISSING))
             {
-                d.sync_step = 3;                    // challenge longer pulse
+                sync_step = 3;                    // challenge longer pulse
                 next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
             }
             else
@@ -128,9 +90,9 @@ static bool check_event()
 
         default:;
         }
-        update_output_alarm(next_timeout_us, &d.sync_step); // schedule timeout
-        d.delta_prev = delta;
-        d.ts_prev = ts_now;
+        update_output_alarm(next_timeout_us, &sync_step); // schedule timeout
+        delta_prev = delta;
+        ts_prev = ts_now;
         return true;
     }
     else
@@ -139,12 +101,12 @@ static bool check_event()
     }
 }
 
-uint find_pulse(uint angle)
+uint Decoder::find_pulse(uint angle)
 {
     uint result;
-    for (uint i = 0; i < (d.N_PULSES - d.N_MISSING); i++)
+    for (uint i = 0; i < (N_PULSES - N_MISSING); i++)
     {
-        if (d.pulse_angles[i] < angle)
+        if (pulse_angles[i] < angle)
         {
             result = i;
         }
@@ -152,38 +114,16 @@ uint find_pulse(uint angle)
     return result;
 }
 
-void compute_target(Trigger *target, uint end_deg, uint pw)
+void Decoder::compute_target(Trigger *target, uint end_deg, uint pw)
 {
-    const uint pulse_width_deg = pw * d.FULL_CYCLE / (d.delta_prev * d.N_PULSES);
+    const uint pulse_width_deg = pw * FULL_CYCLE / (delta_prev * N_PULSES);
     const uint target_deg = (end_deg >= pulse_width_deg)
                                 ? (end_deg - pulse_width_deg)
-                                : (d.FULL_CYCLE + end_deg - pulse_width_deg);
+                                : (FULL_CYCLE + end_deg - pulse_width_deg);
     const uint new_target_n = find_pulse(target_deg);
-    const uint error_deg = target_deg - d.pulse_angles[new_target_n];
-    const uint new_target_us = error_deg * d.delta_prev * d.N_PULSES / d.FULL_CYCLE;
+    const uint error_deg = target_deg - pulse_angles[new_target_n];
+    const uint new_target_us = error_deg * delta_prev * N_PULSES / FULL_CYCLE;
 
     target->set_target(new_target_n, new_target_us, pw);
 }
 
-void decoder_update()
-{
-    static uint32_t last_print;
-
-    if (check_event())
-    {
-        for (uint i = 0; i < 2; i++)
-        {
-            triggers[0].update(d.sync_count);
-        }
-    }
-    compute_target(&triggers[0], 3850, 3000);
-    compute_target(&triggers[1], 250, 3000);
-
-    if (time_us_32() - last_print >= 100'000)
-    {
-        last_print = time_us_32();
-        triggers[0].print_debug();
-        triggers[1].print_debug();
-        printf("\n");
-    }
-}
