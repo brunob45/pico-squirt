@@ -6,6 +6,9 @@
 #include "decoder.h"
 #include "trigger.h"
 
+static Decoder dec;
+static Trigger triggers[2];
+
 int main()
 {
     uint32_t last_print;
@@ -24,12 +27,9 @@ int main()
 
     const uint LED1 = 16;
     const uint LED2 = 17;
-    simulation_enable(LED1);
+    simulation_enable(LED1, 5000);
 
-    Decoder d;
-    Trigger triggers[2];
-
-    d.enable(LED1);
+    dec.enable(LED1);
 
     for (uint i = 0; i < 2; i++)
         triggers[i].init(LED2+i);
@@ -39,18 +39,17 @@ int main()
         // You need to call this function at least more often than the 100ms in the enable call to prevent a reboot
         watchdog_update();
         simulation_update();
-        d.update();
 
-        if (d.update())
+        if (dec.update())
         {
             for (uint i = 0; i < 2; i++)
             {
-                triggers[i].update(d.sync_count);
+                triggers[i].update(dec.sync_count);
             }
         }
 
-        d.compute_target(&triggers[0], 3850, 3000);
-        d.compute_target(&triggers[1], 250, 3000);
+        dec.compute_target(&triggers[0], 3850, 3000);
+        dec.compute_target(&triggers[1], 250, 3000);
 
         if (time_us_32() - last_print >= 100'000)
         {

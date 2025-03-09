@@ -89,17 +89,19 @@ bool pulse_generation(repeating_timer_t *)
     return true; // continue forever
 }
 
-void simulation_enable(uint pin)
+void simulation_enable(uint pin, int rpm)
 {
     _pin = pin;
     gpio_init(_pin);
     gpio_set_dir(_pin, GPIO_OUT);
 
     // Negative timeout means exact delay (rather than delay between callbacks)
-    const uint rpm = 5000;
     int64_t pw = 60'000'000 * 2 / rpm / 24;
     add_repeating_timer_us(-pw / 2, pulse_generation, NULL, &_rt);
     // For more examples of timer use see https://github.com/raspberrypi/pico-examples/tree/master/timer
 }
 
-void simulation_update() {}
+void simulation_update()
+{
+    // do nothing
+}
