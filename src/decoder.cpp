@@ -4,13 +4,14 @@
 #include "pico/sem.h"
 
 #include "decoder.h"
+#include "trigger.h"
 
 struct Decoder
 {
     uint32_t ts_prev, delta_prev;
     uint sync_step = 0, sync_count = 0;
     volatile alarm_id_t timeout_alarm_id = 0;
-    queue_t queue;
+    queue_t new_ts_queue;
     uint pulse_angles[60];
 
     const uint FULL_CYCLE = 7200UL;
@@ -19,35 +20,7 @@ struct Decoder
 } d;
 
 const uint LED2 = 17;
-
-struct Trigger
-{
-    // uint target_deg;
-    int target_n = -1;
-    uint target_us;
-    uint pw;
-    bool running = false;
-    semaphore_t sem;
-
-    static int64_t callback(alarm_id_t, void *data)
-    {
-        Trigger *t = (Trigger *)data;
-        if (t->running)
-        {
-            gpio_clr_mask(1 << LED2);
-            t->running = false;
-            return 0;
-        }
-        else
-        {
-            gpio_set_mask(1 << LED2);
-            t->running = true;
-            const uint pw = t->pw;
-            sem_release(&t->sem); // allow compute_target, alarm has fired
-            return pw;
-        }
-    }
-} triggers[2];
+Trigger triggers[2];
 
 static int64_t sync_loss_cb(alarm_id_t, void *data)
 {
@@ -82,13 +55,13 @@ void decoder_enable(uint pin)
     d.pulse_angles[i] = d.FULL_CYCLE;
 
     for (uint i = 0; i < 2; i++)
-        sem_init(&triggers[i].sem, 1, 1);
+        triggers[i].init(LED2+i);
 
-    queue_init(&d.queue, sizeof(uint32_t), 2);
+    queue_init(&d.new_ts_queue, sizeof(uint32_t), 2);
     gpio_irq_callback_t cb = [](uint, uint32_t)
     {
         const uint32_t timestamp = time_us_32();
-        queue_try_add(&d.queue, &timestamp);
+        queue_try_add(&d.new_ts_queue, &timestamp);
     };
     gpio_set_irq_enabled_with_callback(pin, GPIO_IRQ_EDGE_RISE, true, cb);
 }
@@ -96,7 +69,7 @@ void decoder_enable(uint pin)
 static bool check_event()
 {
     uint32_t ts_now;
-    if (queue_try_remove(&d.queue, &ts_now))
+    if (queue_try_remove(&d.new_ts_queue, &ts_now))
     {
         uint32_t delta = ts_now - d.ts_prev;
         uint32_t next_timeout_us = 0;
