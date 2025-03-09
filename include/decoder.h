@@ -26,7 +26,18 @@ struct Decoder
     void compute_target(Trigger *target, uint end_deg, uint pw);
 
 private:
-    uint find_pulse(uint angle);
+    uint find_pulse(uint angle)
+    {
+        uint result;
+        for (uint i = 0; i < (N_PULSES - N_MISSING); i++)
+        {
+            if (pulse_angles[i] < angle)
+            {
+                result = i;
+            }
+        }
+        return result;
+    }    
     static int64_t sync_loss_cb(alarm_id_t, void *data)
     {
         if (data)

@@ -15,9 +15,6 @@ void new_ts_callback(uint, uint32_t)
 
 void Decoder::enable(uint pin)
 {
-    // gpio_init(LED2);
-    // gpio_set_dir(LED2, GPIO_OUT);
-
     uint i;
     for (i = 0; i < (N_PULSES - N_MISSING); i++)
         pulse_angles[i] = i * FULL_CYCLE / N_PULSES;
@@ -99,19 +96,6 @@ bool Decoder::update()
     {
         return false;
     }
-}
-
-uint Decoder::find_pulse(uint angle)
-{
-    uint result;
-    for (uint i = 0; i < (N_PULSES - N_MISSING); i++)
-    {
-        if (pulse_angles[i] < angle)
-        {
-            result = i;
-        }
-    }
-    return result;
 }
 
 void Decoder::compute_target(Trigger *target, uint end_deg, uint pw)
