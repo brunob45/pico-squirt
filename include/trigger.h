@@ -15,17 +15,20 @@ class Trigger
 public:
     void init(uint pin)
     {
+        gpio_init(pin);
+        gpio_set_dir(pin, GPIO_OUT);
+        pin_mask = (1 << pin);
+
         target_n = -1;
         running = false;
-        pin_mask = (1 << pin);
         sem_init(&sem, 1, 1);
     }
-    void update(uint pulse)
+    void update(uint pulse, absolute_time_t last_pulse)
     {
-        if (pulse == target_n)
+        if (pulse == (target_n + 1))
         {
             sem_try_acquire(&sem); // block compute_target while alarm is pending
-            add_alarm_in_us(target_us, Trigger::callback, this, true);
+            add_alarm_at(last_pulse + target_us, Trigger::callback, this, true);
         }
     }
     void print_debug()
@@ -46,7 +49,7 @@ public:
     }
 
 private:
-    static int64_t callback(alarm_id_t, void *data)
+    static int64_t __not_in_flash_func(callback)(alarm_id_t, void *data)
     {
         if (!data)
             return 0;
@@ -64,7 +67,7 @@ private:
             t->running = true;
             const uint pw = t->pw;
             sem_release(&t->sem); // allow compute_target, alarm has fired
-            return pw;
+            return -(int64_t)(pw);
         }
     }
 };

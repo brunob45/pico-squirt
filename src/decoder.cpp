@@ -6,10 +6,10 @@
 #include "decoder.h"
 #include "trigger.h"
 
-static queue_t* new_ts_queue;
-void new_ts_callback(uint, uint32_t)
+static queue_t *new_ts_queue;
+void __not_in_flash_func(new_ts_callback)(uint, uint32_t)
 {
-    const uint32_t new_ts = time_us_32();
+    const absolute_time_t new_ts = time_us_64();
     queue_try_add(new_ts_queue, &new_ts);
 }
 
@@ -21,13 +21,13 @@ void Decoder::enable(uint pin)
     pulse_angles[i] = FULL_CYCLE;
 
     new_ts_queue = &queue;
-    queue_init(&queue, sizeof(uint32_t), 2);
+    queue_init(&queue, sizeof(absolute_time_t), 1);
     gpio_set_irq_enabled_with_callback(pin, GPIO_IRQ_EDGE_RISE, true, new_ts_callback);
 }
 
 bool Decoder::update()
 {
-    uint32_t ts_now;
+    absolute_time_t ts_now;
     if (queue_try_remove(&queue, &ts_now))
     {
         uint32_t delta = ts_now - ts_prev;
@@ -110,4 +110,3 @@ void Decoder::compute_target(Trigger *target, uint end_deg, uint pw)
 
     target->set_target(new_target_n, new_target_us, pw);
 }
-

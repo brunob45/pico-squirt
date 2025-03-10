@@ -32,7 +32,7 @@ int main()
     dec.enable(LED1);
 
     for (uint i = 0; i < 2; i++)
-        triggers[i].init(LED2+i);
+        triggers[i].init(LED2 + i);
 
     while (true)
     {
@@ -44,7 +44,7 @@ int main()
         {
             for (uint i = 0; i < 2; i++)
             {
-                triggers[i].update(dec.sync_count);
+                triggers[i].update(dec.sync_count, dec.ts_prev);
             }
         }
 

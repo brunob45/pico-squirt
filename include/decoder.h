@@ -11,7 +11,8 @@
 
 struct Decoder
 {
-    uint32_t ts_prev, delta_prev;
+    absolute_time_t ts_prev;
+    uint32_t delta_prev;
     uint sync_step = 0, sync_count = 0;
     volatile alarm_id_t timeout_alarm_id = 0;
     queue_t queue;
@@ -37,7 +38,7 @@ private:
             }
         }
         return result;
-    }    
+    }
     static int64_t sync_loss_cb(alarm_id_t, void *data)
     {
         if (data)

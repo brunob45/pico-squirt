@@ -5,6 +5,7 @@
 
 static uint _pin;
 static repeating_timer_t _rt;
+static volatile bool button_state;
 
 // https://github.com/raspberrypi/pico-examples/tree/master/picoboard/button
 bool __no_inline_not_in_flash_func(get_bootsel_button)()
@@ -49,16 +50,9 @@ bool pulse_generation(repeating_timer_t *)
     static uint8_t cpt = 0;
     static uint button_count = 0;
     static bool button_pressed;
-
-    if (!button_pressed)
-    {
-        gpio_put(_pin, (cpt & 1) && (cpt >= (2 * 1)));
-        cpt = (cpt + 1) % (24 * 2);
-    }
-    const bool button = get_bootsel_button();
     if (button_pressed)
     {
-        if (!button)
+        if (!button_state)
         {
             button_count += 1;
         }
@@ -73,7 +67,7 @@ bool pulse_generation(repeating_timer_t *)
     }
     else
     {
-        if (button)
+        if (button_state)
         {
             button_count += 1;
         }
@@ -85,6 +79,11 @@ bool pulse_generation(repeating_timer_t *)
         {
             button_pressed = true;
         }
+    }
+    if (!button_pressed)
+    {
+        gpio_put(_pin, (cpt & 1) && (cpt >= (2 * 1)));
+        cpt = (cpt + 1) % (24 * 2);
     }
     return true; // continue forever
 }
@@ -103,5 +102,11 @@ void simulation_enable(uint pin, int rpm)
 
 void simulation_update()
 {
-    // do nothing
+    static uint32_t last_update;
+    const uint32_t now = time_us_32();
+    if (now - last_update > 1000)
+    {
+        button_state = get_bootsel_button();
+        last_update = now;
+    }
 }
