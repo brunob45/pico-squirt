@@ -101,11 +101,27 @@ bool Decoder::update()
 void Decoder::compute_target(Trigger *target, uint end_deg, uint pw)
 {
     const uint pulse_width_deg = pw * FULL_CYCLE / (delta_prev * N_PULSES);
-    const uint target_deg = (end_deg >= pulse_width_deg)
-                                ? (end_deg - pulse_width_deg)
-                                : (FULL_CYCLE + end_deg - pulse_width_deg);
-    const uint new_target_n = find_pulse(target_deg);
-    const uint error_deg = target_deg - pulse_angles[new_target_n];
+    uint target_deg = (end_deg >= pulse_width_deg)
+                          ? (end_deg - pulse_width_deg)
+                          : (FULL_CYCLE + end_deg - pulse_width_deg);
+    uint new_target_n = find_pulse(target_deg);
+    uint error_deg = target_deg - pulse_angles[new_target_n];
+
+    if (new_target_n != target->target_n)
+    {
+        // TODO: adjust pulse switch deadband
+        if (error_deg < 50) // 5 deg => 166 us @ 5000 rpm
+        {
+            if ((new_target_n == 0) && (target->target_n == (N_PULSES - N_MISSING - 1)))
+            {
+                // target is after FULL_CYCLE, add constant to avoid underflow
+                target_deg += FULL_CYCLE;
+            }
+            new_target_n = target->target_n;
+            error_deg = target_deg - pulse_angles[new_target_n];
+        }
+    }
+
     const uint new_target_us = error_deg * delta_prev * N_PULSES / FULL_CYCLE;
 
     target->set_target(new_target_n, new_target_us, pw);
