@@ -34,6 +34,8 @@ int main()
     for (uint i = 0; i < 2; i++)
         triggers[i].init(LED2 + i);
 
+    int targets[2];
+
     while (true)
     {
         // You need to call this function at least more often than the 100ms in the enable call to prevent a reboot
@@ -42,14 +44,20 @@ int main()
 
         if (dec.update())
         {
-            for (uint i = 0; i < 2; i++)
+            uint i = 0;
+            if (triggers[i].update(dec.sync_count, dec.ts_prev))
             {
-                triggers[i].update(dec.sync_count, dec.ts_prev);
+                targets[i] = (targets[i] < 7200) ? targets[i] + 1 : 0;
+            }
+            i = 1;
+            if (triggers[i].update(dec.sync_count, dec.ts_prev))
+            {
+                targets[i] = (targets[i] > 0) ? targets[i] - 1 : 7200;
             }
         }
 
-        dec.compute_target(&triggers[0], 3850, 3000);
-        dec.compute_target(&triggers[1], 250, 3000);
+        dec.compute_target(&triggers[0], targets[0], 3000);
+        dec.compute_target(&triggers[1], targets[1], 3000);
 
         if (time_us_32() - last_print >= 100'000)
         {
