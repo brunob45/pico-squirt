@@ -29,10 +29,11 @@ struct Decoder
 private:
     uint find_pulse(uint angle)
     {
-        uint result;
+        // find last pulse lower than angle
+        uint result = 0;
         for (uint i = 0; i < (N_PULSES - N_MISSING); i++)
         {
-            if (pulse_angles[i] < angle)
+            if (angle > pulse_angles[i])
             {
                 result = i;
             }
