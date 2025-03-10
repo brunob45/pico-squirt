@@ -112,9 +112,9 @@ void Decoder::compute_target(Trigger *target, uint end_deg, uint pw)
         // TODO: adjust pulse switch deadband
         if (error_deg < 50) // 5 deg => 166 us @ 5000 rpm
         {
-            if ((new_target_n == 0) && (target->target_n == (N_PULSES - N_MISSING - 1)))
+            if ((new_target_n == 0) && (target->target_n != 1))
             {
-                // target is after FULL_CYCLE, add constant to avoid underflow
+                // target is in fact after FULL_CYCLE
                 target_deg += FULL_CYCLE;
             }
             new_target_n = target->target_n;
