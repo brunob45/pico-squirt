@@ -15,10 +15,25 @@ void __not_in_flash_func(new_ts_callback)(uint, uint32_t)
 
 void Decoder::enable(uint pin)
 {
-    uint i;
-    for (i = 0; i < (N_PULSES - N_MISSING); i++)
-        pulse_angles[i] = i * FULL_CYCLE / N_PULSES;
-    pulse_angles[i] = FULL_CYCLE;
+    const uint d = 0x10000 / N_PULSES;
+    const uint m = 0x10000 % N_PULSES;
+
+    uint s = 0;
+    uint r = 0;
+
+    for (uint i = 0; i < (N_PULSES - N_MISSING); i++)
+    {
+        uint a = d;
+        r += m;
+        if (r > N_PULSES)
+        {
+            a += 1;
+            r -= N_PULSES;
+        }
+        pulse_angles[i] = a;
+        pulse_durations[i] = s;
+    }
+    pulse_angles[N_PULSES - N_MISSING - 1] -= s;
 
     new_ts_queue = &queue;
     queue_init(&queue, sizeof(absolute_time_t), 1);
@@ -32,6 +47,9 @@ bool Decoder::update()
     {
         uint32_t delta = ts_now - ts_prev;
         uint32_t next_timeout_us = 0;
+
+        dur_prev = pulse_durations[sync_count];
+
         switch (sync_step)
         {
         case 0: // first timestamp
@@ -61,7 +79,7 @@ bool Decoder::update()
             if (delta > (delta_prev * 7 / 4)) // expect at least 175ms
             {
                 sync_step = 4;
-                sync_count = 1;
+                sync_count = 0;
                 delta = (delta + 1) / 2;         // longer delta detected, divide by 2
                 next_timeout_us = delta * 5 / 4; // normal pulse @ 125ms
             }
@@ -73,8 +91,8 @@ bool Decoder::update()
             break;
 
         case 4: // full sync
-            sync_count = (sync_count < (N_PULSES - N_MISSING)) ? sync_count + 1 : 1;
-            if (sync_count == (N_PULSES - N_MISSING))
+            sync_count += 1;
+            if (sync_count >= (N_PULSES - N_MISSING - 1))
             {
                 sync_step = 3;                    // challenge longer pulse
                 next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
@@ -100,29 +118,32 @@ bool Decoder::update()
 
 void Decoder::compute_target(Trigger *target, uint end_deg, uint pw)
 {
-    const uint pulse_width_deg = pw * FULL_CYCLE / (delta_prev * N_PULSES);
-    uint target_deg = (end_deg >= pulse_width_deg)
-                          ? (end_deg - pulse_width_deg)
-                          : (FULL_CYCLE + end_deg - pulse_width_deg);
-    uint new_target_n = find_pulse(target_deg);
-    uint error_deg = target_deg - pulse_angles[new_target_n];
-
-    if (new_target_n != target->target_n)
+    if (dur_prev == 0 || delta_prev == 0)
     {
-        // TODO: adjust pulse switch deadband
-        if (error_deg < 50) // 5 deg => 166 us @ 5000 rpm
-        {
-            if ((new_target_n == 0) && (target->target_n != 1))
-            {
-                // target is in fact after FULL_CYCLE
-                target_deg += FULL_CYCLE;
-            }
-            new_target_n = target->target_n;
-            error_deg = target_deg - pulse_angles[new_target_n];
-        }
+        // avoid division by 0
+        return;
     }
 
-    const uint new_target_us = error_deg * delta_prev * N_PULSES / FULL_CYCLE;
+    const uint pulse_width_deg = (pw * dur_prev) / delta_prev;
+    uint target_deg = end_deg - pulse_width_deg;
+
+    uint new_target_n = find_pulse(target_deg);
+    uint error_deg = target_deg - pulse_angles[new_target_n];
+    uint new_target_us = (error_deg * delta_prev) / dur_prev;
+
+    if (new_target_us < 100) // 100us
+    {
+        if (new_target_n == 0)
+        {
+            new_target_n = N_PULSES - N_MISSING - 1;
+        }
+        else
+        {
+            new_target_n -= 1;
+        }
+        error_deg = target_deg - pulse_angles[new_target_n];
+        new_target_us = (error_deg * delta_prev) / dur_prev;
+    }
 
     target->set_target(new_target_n, new_target_us, pw);
 }

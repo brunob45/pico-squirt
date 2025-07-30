@@ -13,12 +13,14 @@ struct Decoder
 {
     absolute_time_t ts_prev;
     uint32_t delta_prev;
+    uint dur_prev = 0xFFFF; // ensure duration is greater than 0 to avoid invalid division
     uint sync_step = 0, sync_count = 0;
     volatile alarm_id_t timeout_alarm_id = 0;
     queue_t queue;
-    uint pulse_angles[60];
 
-    const uint FULL_CYCLE = 7200UL;
+    uint pulse_angles[60];
+    uint pulse_durations[60];
+
     const uint N_PULSES = 24;
     const uint N_MISSING = 1;
 
@@ -30,12 +32,12 @@ private:
     uint find_pulse(uint angle)
     {
         // find last pulse lower than angle
-        uint result = 0;
-        for (uint i = 0; i < (N_PULSES - N_MISSING); i++)
+        uint result = (N_PULSES - N_MISSING - 1);
+        if (angle > 0)
         {
-            if (angle > pulse_angles[i])
+            while (angle <= pulse_angles[result])
             {
-                result = i;
+                result -= 1;
             }
         }
         return result;

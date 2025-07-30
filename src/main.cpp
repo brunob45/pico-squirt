@@ -47,12 +47,12 @@ int main()
             uint i = 0;
             if (triggers[i].update(dec.sync_count, dec.ts_prev))
             {
-                targets[i] = (targets[i] < 7200) ? targets[i] + 1 : 0;
+                targets[i] = (targets[i] < 0xFFFF) ? targets[i] + 1 : 0;
             }
             i = 1;
             if (triggers[i].update(dec.sync_count, dec.ts_prev))
             {
-                targets[i] = (targets[i] > 0) ? targets[i] - 1 : 7200;
+                targets[i] = (targets[i] > 0) ? targets[i] - 1 : 0xFFFF;
             }
         }
 

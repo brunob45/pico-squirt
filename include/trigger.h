@@ -25,7 +25,7 @@ public:
     }
     bool update(uint pulse, absolute_time_t last_pulse)
     {
-        if (pulse == (target_n + 1))
+        if (pulse == target_n)
         {
             sem_try_acquire(&sem); // block compute_target while alarm is pending
             add_alarm_at(last_pulse + target_us, Trigger::callback, this, true);
