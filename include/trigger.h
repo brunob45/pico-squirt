@@ -10,50 +10,35 @@ class Trigger
     bool running;
     semaphore_t sem;
     uint32_t pin_mask;
-    absolute_time_t last_alarm_time;
+    absolute_time_t current_pulse_end;
 
 public:
-    int target_n, target_us, pw;
+    uint pw;
     void init(uint pin)
     {
         gpio_init(pin);
         gpio_set_dir(pin, GPIO_OUT);
         pin_mask = (1 << pin);
 
-        target_n = -1;
         running = false;
         sem_init(&sem, 1, 1);
     }
-    bool update(uint pulse, absolute_time_t last_pulse)
+    bool update(absolute_time_t next_event, uint next_pw)
     {
-        if (pulse == (target_n + 1))
+        // prevent creating new alarm before end of current pulse
+        if (next_event > current_pulse_end)
         {
-            // prevent creating new alarm before end of next pulse
-            if (last_pulse + target_us > last_alarm_time)
-            {
-                last_alarm_time = last_pulse + target_us + pw;
-                sem_try_acquire(&sem); // block compute_target while alarm is pending
-                add_alarm_at(last_pulse + target_us, Trigger::callback, this, true);
-                return true;
-            }
+            current_pulse_end = next_event + next_pw;
+            sem_try_acquire(&sem); // block compute_target while alarm is pending
+            pw = next_pw;
+            add_alarm_at(next_event, Trigger::callback, this, true);
+            return true;
         }
         return false;
     }
     void print_debug()
     {
-        printf("trigger:%d+%d;", target_n, target_us);
-    }
-    bool set_target(uint pulse_n, uint pulse_us, uint pw)
-    {
-        if (!sem_try_acquire(&sem))
-        {
-            return false;
-        }
-        this->target_n = pulse_n;
-        this->target_us = pulse_us;
-        this->pw = pw;
-        sem_release(&sem);
-        return true;
+        printf("trigger:%d+%d;", current_pulse_end, pw);
     }
 
 private:

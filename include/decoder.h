@@ -23,26 +23,27 @@ struct Decoder
 
     void enable(uint pin);
     bool update();
-    void compute_target(Trigger *target, uint end_deg, uint pw);
+    bool compute_target(Trigger *target, uint end_deg, uint pw);
 
 private:
     uint find_pulse(uint angle)
     {
         // find last pulse lower than angle
-        uint result = 0;
-        for (uint i = 0; i < (N_PULSES - N_MISSING); i++)
+        uint result = (N_PULSES - N_MISSING - 1);
+        if (angle > 0)
         {
-            if (angle > pulse_angles[i])
+            while (angle <= pulse_angles[result])
             {
-                result = i;
+                result -= 1;
             }
         }
         return result;
     }
     static int64_t sync_loss_cb(alarm_id_t, void *data)
     {
-        if (data)
-            *(uint *)data = 0;
+        uint *step = (uint*)data;
+        if (step)
+            *step = 0;
         return 0;
     }
     void update_output_alarm(uint32_t us, uint *step)

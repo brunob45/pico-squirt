@@ -61,7 +61,7 @@ bool Decoder::update()
             if (delta > (delta_prev * 7 / 4)) // expect at least 175ms
             {
                 sync_step = 4;
-                sync_count = 1;
+                sync_count = 0;
                 delta = (delta + 1) / 2;         // longer delta detected, divide by 2
                 next_timeout_us = delta * 5 / 4; // normal pulse @ 125ms
             }
@@ -73,8 +73,8 @@ bool Decoder::update()
             break;
 
         case 4: // full sync
-            sync_count = (sync_count < (N_PULSES - N_MISSING)) ? sync_count + 1 : 1;
-            if (sync_count == (N_PULSES - N_MISSING))
+            sync_count = (sync_count < (N_PULSES - N_MISSING - 1)) ? sync_count + 1 : 0;
+            if (sync_count == (N_PULSES - N_MISSING - 1))
             {
                 sync_step = 3;                    // challenge longer pulse
                 next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
@@ -98,24 +98,29 @@ bool Decoder::update()
     }
 }
 
-void Decoder::compute_target(Trigger *target, uint end_deg, uint pw)
+bool Decoder::compute_target(Trigger *target, uint end_deg, uint pw)
 {
     const uint pulse_width_deg = pw * 0x10000 / (delta_prev * N_PULSES);
     uint target_deg = (end_deg - pulse_width_deg) & 0xFFFF;
     uint new_target_n = find_pulse(target_deg);
     uint error_deg = (target_deg - pulse_angles[new_target_n]) & 0xFFFF;
+    uint new_target_us = error_deg * delta_prev * N_PULSES / 0x10000;
 
-    if (new_target_n != target->target_n)
+    if (new_target_us < 100)
     {
-        // TODO: adjust pulse switch deadband
-        if (error_deg < 50) // 5 deg => 166 us @ 5000 rpm
+        if (new_target_n > 0)
         {
-            new_target_n = target->target_n;
-            error_deg = (target_deg - pulse_angles[new_target_n]) & 0xFFFF;
+            new_target_n -= 1;
         }
+        else
+        {
+            new_target_n = N_PULSES - N_MISSING - 1;
+        }
+        error_deg = (target_deg - pulse_angles[new_target_n]) & 0xFFFF;
+        new_target_us = error_deg * delta_prev * N_PULSES / 0x10000;
     }
-
-    const uint new_target_us = error_deg * delta_prev * N_PULSES / 0x10000;
-
-    target->set_target(new_target_n, new_target_us, pw);
+    if (sync_count == new_target_n) {
+        return target->update(ts_prev + new_target_us, pw);
+    }
+    return false;
 }
