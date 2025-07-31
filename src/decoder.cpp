@@ -17,8 +17,8 @@ void Decoder::enable(uint pin)
 {
     uint i;
     for (i = 0; i < (N_PULSES - N_MISSING); i++)
-        pulse_angles[i] = i * FULL_CYCLE / N_PULSES;
-    pulse_angles[i] = FULL_CYCLE;
+        pulse_angles[i] = i * 0x10000 / N_PULSES;
+    pulse_angles[i] = 0x10000;
 
     new_ts_queue = &queue;
     queue_init(&queue, sizeof(absolute_time_t), 1);
@@ -100,29 +100,22 @@ bool Decoder::update()
 
 void Decoder::compute_target(Trigger *target, uint end_deg, uint pw)
 {
-    const uint pulse_width_deg = pw * FULL_CYCLE / (delta_prev * N_PULSES);
-    uint target_deg = (end_deg >= pulse_width_deg)
-                          ? (end_deg - pulse_width_deg)
-                          : (FULL_CYCLE + end_deg - pulse_width_deg);
+    const uint pulse_width_deg = pw * 0x10000 / (delta_prev * N_PULSES);
+    uint target_deg = (end_deg - pulse_width_deg) & 0xFFFF;
     uint new_target_n = find_pulse(target_deg);
-    uint error_deg = target_deg - pulse_angles[new_target_n];
+    uint error_deg = (target_deg - pulse_angles[new_target_n]) & 0xFFFF;
 
     if (new_target_n != target->target_n)
     {
         // TODO: adjust pulse switch deadband
         if (error_deg < 50) // 5 deg => 166 us @ 5000 rpm
         {
-            if ((new_target_n == 0) && (target->target_n != 1))
-            {
-                // target is in fact after FULL_CYCLE
-                target_deg += FULL_CYCLE;
-            }
             new_target_n = target->target_n;
-            error_deg = target_deg - pulse_angles[new_target_n];
+            error_deg = (target_deg - pulse_angles[new_target_n]) & 0xFFFF;
         }
     }
 
-    const uint new_target_us = error_deg * delta_prev * N_PULSES / FULL_CYCLE;
+    const uint new_target_us = error_deg * delta_prev * N_PULSES / 0x10000;
 
     target->set_target(new_target_n, new_target_us, pw);
 }

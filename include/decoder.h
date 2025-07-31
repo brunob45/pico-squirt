@@ -18,7 +18,6 @@ struct Decoder
     queue_t queue;
     uint pulse_angles[60];
 
-    const uint FULL_CYCLE = 7200UL;
     const uint N_PULSES = 24;
     const uint N_MISSING = 1;
 
