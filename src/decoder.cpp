@@ -98,16 +98,19 @@ bool Decoder::update()
     }
 }
 
-bool Decoder::compute_target(Trigger *target, uint end_deg, uint pw)
+bool Decoder::compute_target(Trigger *trig, uint end_deg, uint pw)
 {
     const uint pulse_width_deg = pw * 0x10000 / (delta_prev * N_PULSES);
     const uint16_t target_deg = (end_deg - pulse_width_deg) & 0xFFFF;
     const uint16_t delta_deg = target_deg - pulse_angles[sync_count];
     const uint delta_us = delta_deg * delta_prev * N_PULSES / 0x10000;
 
-    if (delta_us < 2 * delta_prev + 100)
+    absolute_time_t target = ts_prev + delta_us;
+    absolute_time_t now = time_us_64();
+
+    if (target - now < 300) // 300 us = 18 deg at 10000 rpm
     {
-        return target->update(ts_prev + delta_us, pw);
+        return trig->update(target, pw);
     }
     return false;
 }
