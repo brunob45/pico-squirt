@@ -10,6 +10,7 @@ class Trigger
     bool running;
     semaphore_t sem;
     uint32_t pin_mask;
+    absolute_time_t last_alarm_time;
 
 public:
     int target_n, target_us, pw;
@@ -27,9 +28,14 @@ public:
     {
         if (pulse == (target_n + 1))
         {
-            sem_try_acquire(&sem); // block compute_target while alarm is pending
-            add_alarm_at(last_pulse + target_us, Trigger::callback, this, true);
-            return true;
+            // prevent creating new alarm before end of next pulse
+            if (last_pulse + target_us > last_alarm_time)
+            {
+                last_alarm_time = last_pulse + target_us + pw;
+                sem_try_acquire(&sem); // block compute_target while alarm is pending
+                add_alarm_at(last_pulse + target_us, Trigger::callback, this, true);
+                return true;
+            }
         }
         return false;
     }
