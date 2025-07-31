@@ -14,6 +14,7 @@ class Trigger
 
 public:
     uint pw;
+
     void init(uint pin)
     {
         gpio_init(pin);

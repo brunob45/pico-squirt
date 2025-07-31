@@ -101,26 +101,13 @@ bool Decoder::update()
 bool Decoder::compute_target(Trigger *target, uint end_deg, uint pw)
 {
     const uint pulse_width_deg = pw * 0x10000 / (delta_prev * N_PULSES);
-    uint target_deg = (end_deg - pulse_width_deg) & 0xFFFF;
-    uint new_target_n = find_pulse(target_deg);
-    uint error_deg = (target_deg - pulse_angles[new_target_n]) & 0xFFFF;
-    uint new_target_us = error_deg * delta_prev * N_PULSES / 0x10000;
+    const uint16_t target_deg = (end_deg - pulse_width_deg) & 0xFFFF;
+    const uint16_t delta_deg = target_deg - pulse_angles[sync_count];
+    const uint delta_us = delta_deg * delta_prev * N_PULSES / 0x10000;
 
-    if (new_target_us < 100)
+    if (delta_us < 2 * delta_prev + 100)
     {
-        if (new_target_n > 0)
-        {
-            new_target_n -= 1;
-        }
-        else
-        {
-            new_target_n = N_PULSES - N_MISSING - 1;
-        }
-        error_deg = (target_deg - pulse_angles[new_target_n]) & 0xFFFF;
-        new_target_us = error_deg * delta_prev * N_PULSES / 0x10000;
-    }
-    if (sync_count == new_target_n) {
-        return target->update(ts_prev + new_target_us, pw);
+        return target->update(ts_prev + delta_us, pw);
     }
     return false;
 }
