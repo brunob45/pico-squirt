@@ -108,7 +108,7 @@ bool Decoder::compute_target(Trigger *trig, uint end_deg, uint pw)
     const absolute_time_t target = ts_prev + us_until_start;
     const absolute_time_t now = get_absolute_time();
 
-    if (now - target < 300) // 300 us = 18 deg at 10000 rpm
+    if (absolute_time_diff_us(now, target) < 100) // 100 us = 6 deg at 10000 rpm
     {
         return trig->update(target, pw);
     }

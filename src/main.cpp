@@ -33,7 +33,7 @@ int main()
 
     gpio_init(LED3);
     gpio_set_dir(LED3, GPIO_OUT);
-    gpio_clr_mask(1<<LED3);
+    gpio_clr_mask(1 << LED3);
 
     dec.enable(LED1);
 
@@ -43,6 +43,8 @@ int main()
     uint16_t targets[2];
 
     uint event_triggered = 0;
+    uint cycle_time, cycle_max = 0;
+    uint last_cycle = time_us_32();
 
     while (true)
     {
@@ -77,12 +79,20 @@ int main()
             targets[1] -= 91;
         }
 
-        if (time_us_32() - last_print >= 100'000)
+        const uint this_cycle = time_us_32();
+        cycle_time = this_cycle - last_cycle;
+        last_cycle = this_cycle;
+        if (cycle_time > cycle_max)
+            cycle_max = cycle_time;
+
+        if (this_cycle - last_print >= 100'000)
         {
-            last_print = time_us_32();
-            // triggers[0].print_debug();
-            // triggers[1].print_debug();
-            // printf("\n");
+            last_print = this_cycle;
+            printf("%d,", cycle_max);
+            triggers[0].print_debug();
+            triggers[1].print_debug();
+            printf("\n");
+            cycle_max = 0;
         }
     }
 }
