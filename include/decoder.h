@@ -12,8 +12,9 @@
 struct Decoder
 {
     absolute_time_t ts_prev;
-    uint32_t delta_prev;
-    uint sync_step = 0, sync_count = 0;
+    uint delta_prev;
+    uint sync_step = 0;
+    uint sync_count = 0;
     volatile alarm_id_t timeout_alarm_id = 0;
     queue_t queue;
     uint pulse_angles[60];

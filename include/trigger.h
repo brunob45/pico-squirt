@@ -10,32 +10,35 @@ class Trigger
     bool running;
     semaphore_t sem;
     uint32_t pin_mask;
+    uint pw;
     absolute_time_t current_pulse_end;
 
 public:
-    uint pw;
-
     void init(uint pin)
     {
+        pin_mask = (1<<pin);
         gpio_init(pin);
         gpio_set_dir(pin, GPIO_OUT);
-        pin_mask = (1 << pin);
 
-        running = false;
         sem_init(&sem, 1, 1);
     }
     bool update(absolute_time_t next_event, uint next_pw)
     {
-        // prevent creating new alarm before end of current pulse
-        if (next_event > current_pulse_end)
+        if (next_event < current_pulse_end)
         {
-            current_pulse_end = next_event + next_pw;
-            sem_try_acquire(&sem); // block compute_target while alarm is pending
-            pw = next_pw;
-            add_alarm_at(next_event, Trigger::callback, this, true);
-            return true;
+            // prevent creating new alarm before end of current pulse
+            return false;
         }
-        return false;
+        if (!sem_try_acquire(&sem))
+        {
+            // block update() while alarm is pending
+            return false;
+        }
+
+        current_pulse_end = next_event + next_pw;
+        pw = next_pw;
+        add_alarm_at(next_event, Trigger::callback, this, true);
+        return true;
     }
     void print_debug()
     {
@@ -60,7 +63,7 @@ private:
             gpio_set_mask(t->pin_mask);
             t->running = true;
             const uint pw = t->pw;
-            sem_release(&t->sem); // allow compute_target, alarm has fired
+            sem_release(&t->sem); // allow update(), alarm has fired
             return -(int64_t)(pw);
         }
     }

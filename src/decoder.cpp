@@ -9,7 +9,7 @@
 static queue_t *new_ts_queue;
 void __not_in_flash_func(new_ts_callback)(uint, uint32_t)
 {
-    const absolute_time_t new_ts = time_us_64();
+    const absolute_time_t new_ts = get_absolute_time();
     queue_try_add(new_ts_queue, &new_ts);
 }
 
@@ -100,15 +100,15 @@ bool Decoder::update()
 
 bool Decoder::compute_target(Trigger *trig, uint end_deg, uint pw)
 {
-    const uint pulse_width_deg = pw * 0x10000 / (delta_prev * N_PULSES);
-    const uint16_t target_deg = (end_deg - pulse_width_deg) & 0xFFFF;
-    const uint16_t delta_deg = target_deg - pulse_angles[sync_count];
-    const uint delta_us = delta_deg * delta_prev * N_PULSES / 0x10000;
+    const uint pw_deg = pw * 0x10000 / (delta_prev * N_PULSES);
+    const uint deg_until_end = (end_deg - pulse_angles[sync_count]) & 0xFFFF;
+    const int deg_until_start = deg_until_end - pw_deg;
+    const int us_until_start = deg_until_start * delta_prev * N_PULSES / 0x10000;
 
-    absolute_time_t target = ts_prev + delta_us;
-    absolute_time_t now = time_us_64();
+    const absolute_time_t target = ts_prev + us_until_start;
+    const absolute_time_t now = get_absolute_time();
 
-    if (target - now < 300) // 300 us = 18 deg at 10000 rpm
+    if (now - target < 300) // 300 us = 18 deg at 10000 rpm
     {
         return trig->update(target, pw);
     }
