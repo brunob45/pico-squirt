@@ -2,15 +2,18 @@
 #include "pico/stdlib.h"
 #include "hardware/watchdog.h"
 
+#include "canbus.h"
 #include "simulation.h"
 #include "decoder.h"
 #include "trigger.h"
 
-static Decoder dec;
-static Trigger triggers[2];
-
 int main()
 {
+    Decoder decoder;
+
+    Trigger trigger1, trigger2;
+    uint16_t target1, target2;
+
     uint32_t last_print;
 
     stdio_init_all();
@@ -26,21 +29,20 @@ int main()
     watchdog_enable(100, 1);
 
     const uint LED1 = 16;
-    const uint LED2 = 17;
     simulation_enable(LED1, 5000);
+    decoder.enable(LED1);
+
+    const uint LED2 = 17;
+    trigger1.init(LED2 + 0);
+    trigger2.init(LED2 + 1);
+
 
     const uint LED3 = 19;
-
     gpio_init(LED3);
     gpio_set_dir(LED3, GPIO_OUT);
     gpio_clr_mask(1 << LED3);
 
-    dec.enable(LED1);
-
-    for (uint i = 0; i < 2; i++)
-        triggers[i].init(LED2 + i);
-
-    uint16_t targets[2];
+    canbus_setup();
 
     uint event_triggered = 0;
     uint cycle_time, cycle_max = 0;
@@ -52,9 +54,9 @@ int main()
         watchdog_update();
         simulation_update();
 
-        if (dec.update())
+        if (decoder.update())
         {
-            if (dec.sync_count == 1)
+            if (decoder.sync_count == 1)
             {
                 if (event_triggered == 0)
                 {
@@ -69,14 +71,14 @@ int main()
             }
         }
 
-        if (dec.compute_target(&triggers[0], targets[0], 3000))
+        if (decoder.compute_target(&trigger1, target1, 3000))
         {
             event_triggered += 1;
-            targets[0] += 91;
+            target1 += 91;
         }
-        if (dec.compute_target(&triggers[1], targets[1], 3000))
+        if (decoder.compute_target(&trigger2, target2, 3000))
         {
-            targets[1] -= 91;
+            target2 -= 91;
         }
 
         const uint this_cycle = time_us_32();
@@ -89,8 +91,8 @@ int main()
         {
             last_print = this_cycle;
             printf("%d,", cycle_max);
-            triggers[0].print_debug();
-            triggers[1].print_debug();
+            trigger1.print_debug();
+            trigger2.print_debug();
             printf("\n");
             cycle_max = 0;
         }

@@ -37,6 +37,7 @@ pico_sdk_init()
 
 add_executable(pico-squirt
     ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/canbus.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/decoder.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/simulation.cpp
     ${CMAKE_CURRENT_LIST_DIR}/lib/can2040/can2040.c
