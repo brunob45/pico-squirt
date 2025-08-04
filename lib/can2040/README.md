@@ -1,1 +1,1 @@
-https://github.com/KevinOConnor
+https://github.com/KevinOConnor/can2040
