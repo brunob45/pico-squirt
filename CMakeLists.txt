@@ -36,18 +36,20 @@ pico_sdk_init()
 # Add executable. Default name is the project name, version 0.1
 
 add_executable(pico-squirt
-    src/main.cpp
-    src/decoder.cpp
-    src/simulation.cpp
-    )
+    ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/decoder.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/simulation.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/lib/can2040/can2040.c
+)
 
 pico_set_program_name(pico-squirt "pico-squirt")
 pico_set_program_version(pico-squirt "0.1")
 
 # Generate PIO header
-# pico_generate_pio_header(pico-squirt
-#     ${CMAKE_CURRENT_LIST_DIR}/pio/blink.pio
-#     )
+pico_generate_pio_header(pico-squirt
+    # ${CMAKE_CURRENT_LIST_DIR}/pio/blink.pio
+    ${CMAKE_CURRENT_LIST_DIR}/lib/can2040/can2040.pio
+)
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(pico-squirt 0)
@@ -55,20 +57,23 @@ pico_enable_stdio_usb(pico-squirt 1)
 
 # Add the standard library to the build
 target_link_libraries(pico-squirt
-        pico_stdlib)
+    pico_stdlib
+)
 
 # Add the standard include files to the build
 target_include_directories(pico-squirt PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/lib/can2040
+    ${CMAKE_CURRENT_LIST_DIR}/lib/libdivide
 )
 
 # Add any user requested libraries
 target_link_libraries(pico-squirt 
-        hardware_pio
-        hardware_interp
-        hardware_timer
-        hardware_watchdog
-        )
+    hardware_pio
+    hardware_interp
+    hardware_timer
+    hardware_watchdog
+)
 
 pico_add_extra_outputs(pico-squirt)
 
