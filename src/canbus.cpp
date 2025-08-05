@@ -48,6 +48,8 @@ namespace CANbus
         can2040_setup(&can0, pio_num);
         can2040_callback_config(&can0, can2040_cb);
 
+        can0.ignore_ack = 1; // testing with a simple jumper between tx/rx
+
         // Enable irqs
         irq_set_exclusive_handler(PIO0_IRQ_0, PIOx_IRQHandler);
         irq_set_priority(PIO0_IRQ_0, 1);

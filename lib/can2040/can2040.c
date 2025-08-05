@@ -803,6 +803,9 @@ tx_check_local_message(struct can2040 *cd)
             return -1;
         // This is a self transmit
         cd->tx_state = TS_CONFIRM_TX;
+        if (cd->ignore_ack) { // BB
+            writel(&cd->tx_pull_pos, cd->tx_pull_pos + 1);
+        }
         return 1;
     }
     return 0;
