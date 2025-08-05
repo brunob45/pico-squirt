@@ -7,14 +7,14 @@
 #include "decoder.h"
 #include "trigger.h"
 
+static Decoder decoder;
+static Trigger trigger1, trigger2;
+
 int main()
 {
-    Decoder decoder;
-
-    Trigger trigger1, trigger2;
     uint16_t target1, target2;
 
-    uint32_t last_print;
+    absolute_time_t last_print = get_absolute_time();
 
     stdio_init_all();
 
@@ -42,7 +42,7 @@ int main()
     gpio_set_dir(LED3, GPIO_OUT);
     gpio_clr_mask(1 << LED3);
 
-    canbus_setup();
+    CANbus::setup();
 
     uint event_triggered = 0;
     uint cycle_time, cycle_max = 0;
@@ -50,6 +50,8 @@ int main()
 
     while (true)
     {
+        gpio_xor_mask(1 << LED3);
+
         // You need to call this function at least more often than the 100ms in the enable call to prevent a reboot
         watchdog_update();
         simulation_update();
@@ -60,7 +62,6 @@ int main()
             {
                 if (event_triggered == 0)
                 {
-                    gpio_xor_mask(1 << LED3);
                     printf("missed event\n");
                 }
                 else if (event_triggered > 1)
@@ -81,19 +82,20 @@ int main()
             target2 -= 91;
         }
 
-        const uint this_cycle = time_us_32();
+        const absolute_time_t this_cycle = get_absolute_time();
         cycle_time = this_cycle - last_cycle;
         last_cycle = this_cycle;
         if (cycle_time > cycle_max)
             cycle_max = cycle_time;
 
-        if (this_cycle - last_print >= 100'000)
+        if (absolute_time_diff_us(last_print, this_cycle) >= 1e6)
         {
             last_print = this_cycle;
-            printf("%d,", cycle_max);
-            trigger1.print_debug();
-            trigger2.print_debug();
-            printf("\n");
+            CANbus::transmit(1, 2, cycle_max, cycle_max>>8, 0, 0, 0, 0, 0, 0);
+            // printf("%d,", cycle_max);
+            // trigger1.print_debug();
+            // trigger2.print_debug();
+            // printf("\n");
             cycle_max = 0;
         }
     }

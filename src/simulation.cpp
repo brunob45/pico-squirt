@@ -106,7 +106,7 @@ void simulation_update()
     const uint32_t now = time_us_32();
     if (now - last_update > 1000)
     {
-        button_state = get_bootsel_button();
+        button_state = false; // get_bootsel_button(); // this function takes ~50us to execute
         last_update = now;
     }
 }
