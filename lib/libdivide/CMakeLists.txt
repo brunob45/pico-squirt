@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 3.5)
+# cmake_minimum_required(VERSION 3.5)
+# Compatibility with CMake < 3.10 will be removed from a future version of CMake
+cmake_minimum_required(VERSION 3.10)
 set(LIBDIVIDE_VERSION "5.2.0")
 project(libdivide C CXX)
 

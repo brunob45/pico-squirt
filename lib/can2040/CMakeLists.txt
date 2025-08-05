@@ -1,3 +1,5 @@
+cmake_minimum_required(VERSION 3.13)
+
 # Add a library to the project using the specified source files.
 add_library(can2040 "")
 
@@ -8,7 +10,7 @@ target_sources(can2040 PRIVATE
 
 # Specify libraries to use when linking.
 target_link_libraries(can2040
-    hardware_pio
+    pico_stdlib
 )
 
 # Add include directories to a target.
