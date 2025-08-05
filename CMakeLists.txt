@@ -78,5 +78,5 @@ target_link_libraries(pico-squirt
 
 pico_add_extra_outputs(pico-squirt)
 
-# Select a 200Mhz clock
+# Select a 200Mhz clock - or use PICO_USE_FASTEST_SUPPORTED_CLOCK=1
 add_compile_definitions(SYS_CLK_MHZ=200)
