@@ -91,7 +91,7 @@ int main()
         if (absolute_time_diff_us(last_print, this_cycle) >= 1e6)
         {
             last_print = this_cycle;
-            CANbus::transmit(1, 2, cycle_max, cycle_max>>8, 0, 0, 0, 0, 0, 0);
+            CANbus::transmit(1 | 1<<31, 2, cycle_max, cycle_max>>8, 0, 0, 0, 0, 0, 0);
             // printf("%d,", cycle_max);
             // trigger1.print_debug();
             // trigger2.print_debug();
