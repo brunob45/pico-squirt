@@ -90,6 +90,10 @@ bool Decoder::update()
         update_output_alarm(next_timeout_us, &sync_step); // schedule timeout
         delta_prev = delta;
         ts_prev = ts_now;
+
+        // update timing variables
+        full_cycle_us = delta_prev * N_PULSES;
+        fast_d = libdivide::divider<uint>(full_cycle_us);
         return true;
     }
     else
@@ -100,10 +104,10 @@ bool Decoder::update()
 
 bool Decoder::compute_target(Trigger *trig, uint end_deg, uint pw)
 {
-    const uint pw_deg = pw * 0x10000 / (delta_prev * N_PULSES);
-    const uint deg_until_end = (end_deg - pulse_angles[sync_count]) & 0xFFFF;
+    const uint pw_deg = pw * 0x10000 / fast_d;
+    const int deg_until_end = (end_deg - pulse_angles[sync_count]) & 0xFFFF;
     const int deg_until_start = deg_until_end - pw_deg;
-    const int us_until_start = deg_until_start * delta_prev * N_PULSES / 0x10000;
+    const int us_until_start = deg_until_start * full_cycle_us / 0x10000;
 
     const absolute_time_t target = ts_prev + us_until_start;
     const absolute_time_t now = get_absolute_time();

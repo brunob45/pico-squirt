@@ -7,6 +7,8 @@
 #include "pico/util/queue.h"
 #include "pico/sem.h"
 
+#include "libdivide.h"
+
 #include "trigger.h"
 
 struct Decoder
@@ -18,6 +20,9 @@ struct Decoder
     volatile alarm_id_t timeout_alarm_id = 0;
     queue_t queue;
     uint pulse_angles[60];
+
+    uint full_cycle_us;
+    libdivide::divider<uint> fast_d;
 
     const uint N_PULSES = 24;
     const uint N_MISSING = 1;
