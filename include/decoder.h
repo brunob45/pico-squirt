@@ -47,7 +47,7 @@ private:
     }
     static int64_t sync_loss_cb(alarm_id_t, void *data)
     {
-        uint *step = (uint*)data;
+        uint *step = (uint *)data;
         if (step)
             *step = 0;
         return 0;
@@ -60,6 +60,10 @@ private:
             cancel_alarm(id);
         }
         timeout_alarm_id = add_alarm_in_us(us, sync_loss_cb, step, true);
+    }
+    uint get_rpm()
+    {
+        return 0x8000U / fast_d;
     }
 };
 
