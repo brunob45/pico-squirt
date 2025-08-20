@@ -7,11 +7,15 @@
 #include "decoder.h"
 #include "trigger.h"
 
+// #include "uart-bridge.h"
+
 static Decoder decoder;
 static Trigger trigger1, trigger2;
 
 int main()
 {
+    // uart_bridge_run();
+
     uint16_t target1, target2;
 
     absolute_time_t last_print = get_absolute_time();

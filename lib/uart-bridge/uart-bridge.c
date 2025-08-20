@@ -314,7 +314,7 @@ void init_uart_data(uint8_t itf)
     uart_set_irq_enables(ui->inst, true, false);
 }
 
-int main(void)
+int uart_bridge_run(void)
 {
     int itf;
 

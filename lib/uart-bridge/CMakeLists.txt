@@ -19,6 +19,6 @@ target_link_libraries(uart_bridge
 
 # Add include directories to a target.
 target_include_directories(uart_bridge PUBLIC
-    ./
+    ${CMAKE_CURRENT_LIST_DIR}
     pico-sdk/lib/tinyusb/src
 )
