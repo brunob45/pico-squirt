@@ -52,7 +52,7 @@ pico_set_program_version(pico-squirt "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(pico-squirt 0)
-pico_enable_stdio_usb(pico-squirt 1)
+pico_enable_stdio_usb(pico-squirt 0)
 
 # Add the standard library to the build
 target_link_libraries(pico-squirt
@@ -66,6 +66,7 @@ target_include_directories(pico-squirt PRIVATE
 
 add_subdirectory(lib/can2040)
 add_subdirectory(lib/libdivide)
+add_subdirectory(lib/uart-bridge)
 
 # Add any user requested libraries
 target_link_libraries(pico-squirt 
@@ -75,6 +76,7 @@ target_link_libraries(pico-squirt
     hardware_watchdog
     can2040
     libdivide
+    uart_bridge
 )
 
 pico_add_extra_outputs(pico-squirt)
