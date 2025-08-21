@@ -7,6 +7,9 @@
 #include "hardware/flash.h"
 #include "hardware/structs/systick.h"
 
+// https://github.com/raspberrypi/pico-examples/blob/master/flash/program/flash_program.c
+// https://forums.raspberrypi.com/viewtopic.php?f=145&t=304201&p=1820770&hilit=Hermannsw+systick#p1822677
+
 // We're going to erase and reprogram a region 256k from the start of flash.
 // Once done, we can access this at XIP_BASE + 256k.
 #define FLASH_TARGET_OFFSET (256 * 1024)
