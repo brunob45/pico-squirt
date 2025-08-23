@@ -1,7 +1,7 @@
 CC=avr-gcc
 CFLAGS=-mmcu=avr16dd28 -B lib/gcc/dev -isystem lib/gcc/include -O2 -DF_CPU=24000000UL
 
-SRCS=main.cpp
+SRCS=main.cpp twi.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 OUTP=main.elf
 
@@ -12,4 +12,7 @@ all: $(OBJS)
 	$(CC) $(CFLAGS) -c $<
 
 clean:
-	rm -f $(OUTP) $(OBJS)
+	rm -f $(OBJS)
+
+cleanall: clean
+	rm -f $(OUTP)
