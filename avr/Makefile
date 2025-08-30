@@ -1,4 +1,4 @@
-CC=avr-gcc
+CC=gcc/bin/avr-gcc
 CFLAGS=-mmcu=avr16dd28 -B lib/gcc/dev -isystem lib/gcc/include -O2 -DF_CPU=24000000UL
 
 SRCS=main.cpp twi.cpp
