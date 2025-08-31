@@ -1,0 +1,22 @@
+{
+    "actionButtons": {
+        "commands": [
+            {
+                "name": "Build",
+                "command": "wsl -e make target"
+            },
+            {
+                "name": "Erase",
+                "command": "pymcuprog erase -m flash -t uart -u COM4 -d avr16dd28"
+            },
+            {
+                "name": "Write",
+                "command": "pymcuprog write -t uart -u COM4 -d avr16dd28 -f main.hex"
+            }
+        ],
+        "defaultColor": "white",
+        "reloadButton": "↻",
+        "loadNpmCommands": false
+    }
+    
+}
