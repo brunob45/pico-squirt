@@ -73,6 +73,7 @@ target_link_libraries(pico-squirt
     hardware_interp
     hardware_timer
     hardware_watchdog
+    hardware_spi
     can2040
     libdivide
 )
