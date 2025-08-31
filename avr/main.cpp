@@ -59,8 +59,8 @@ int main(void)
         if (now - last > 500)
         {
             last = now;
-            PORTD.OUTTGL = 0xff;
+            PORTD.OUTTGL = PIN1_bm;
         }
-        // spi_update();
+        spi_update();
     }
 }

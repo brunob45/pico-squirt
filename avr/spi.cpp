@@ -11,11 +11,14 @@
 
 ISR(SPI0_INT_vect)
 {
+    SPI0.INTFLAGS = SPI_IF_bm; // Clear interrupt flag
+
     static uint8_t last;
     uint8_t current = SPI0.DATA;
     if (current > 0 && current < 0xFF)
         last = current;
     SPI0.DATA = last;
+    PORTD.OUTTGL = PIN2_bm;
 }
 
 void spi_init()
@@ -25,7 +28,7 @@ void spi_init()
 
     // Initialize the SPI to a basic functional state by following these steps:
     // 1. Configure the SS pin in the port peripheral.
-    PORTC.DIRSET = PIN1_bm;
+    PORTC.DIRSET = PIN1_bm; // Set MISO as OUTPUT
     // 2. Select the SPI host/client operation by writing the Host/Client Select (MASTER) bit in the Control A (SPIn.CTRLA) register.
     // 3. In Host mode, select the clock speed by writing the Prescaler (PRESC) bits and the Clock Double (CLK2X) bit in SPIn.CTRLA.
     // 4. Optional: Select the Data Transfer mode by writing to the MODE bits in the Control B (SPIn.CTRLB) register.
@@ -35,6 +38,7 @@ void spi_init()
     // 8. Enable the SPI by writing a ‘1’ to the ENABLE bit in SPIn.CTRLA
     SPI0.CTRLA = SPI_ENABLE_bm;
 
+    // Enable interrupt
     SPI0.INTCTRL = SPI_IE_bm;
 }
 
