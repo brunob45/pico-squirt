@@ -9,15 +9,14 @@
 // PC2 => SCK
 // PC3 => CS
 
+volatile uint8_t _value;
+
 ISR(SPI0_INT_vect)
 {
     SPI0.INTFLAGS = SPI_IF_bm; // Clear interrupt flag
 
-    static uint8_t last;
-    uint8_t current = SPI0.DATA;
-    if (current > 0 && current < 0xFF)
-        last = current;
-    SPI0.DATA = last;
+    SPI0.DATA = _value; // Send value
+
     PORTD.OUTTGL = PIN2_bm;
 }
 
@@ -42,6 +41,7 @@ void spi_init()
     SPI0.INTCTRL = SPI_IE_bm;
 }
 
-void spi_update()
+void spi_update(uint8_t value)
 {
+    _value = value;
 }

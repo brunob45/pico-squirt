@@ -41,7 +41,7 @@ int main()
     gpio_set_function(4, GPIO_FUNC_SPI);
     gpio_set_function(5, GPIO_FUNC_SPI);
 
-    absolute_time_t last_trx = get_absolute_time();
+    auto last_trx = get_absolute_time();
 
     uint8_t cpt = 0, res;
 
@@ -53,7 +53,7 @@ int main()
         {
             last_trx = get_absolute_time();
             spi_write_read_blocking(spi0, &cpt, &res, 1);
-            printf("%d %d ", cpt, res);
+            // printf("%d %d ", cpt, res);
             cpt += 1;
         }
     }

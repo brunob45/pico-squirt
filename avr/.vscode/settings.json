@@ -12,11 +12,14 @@
             {
                 "name": "Write",
                 "command": "pymcuprog write -t uart -u COM4 -d avr16dd28 -f main.hex"
+            },
+            {
+                "name": "Ping",
+                "command": "pymcuprog ping -t uart -u COM4 -d avr16dd28"
             }
         ],
         "defaultColor": "white",
         "reloadButton": "↻",
         "loadNpmCommands": false
     }
-    
 }

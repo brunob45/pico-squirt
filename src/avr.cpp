@@ -1,7 +1,6 @@
-#include <stdio.h>
-#include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/uart.h"
+#include "tusb.h"
 
 // UART defines
 // By default the stdout UART is `uart0`, so we will use the second one
@@ -39,18 +38,18 @@ void avr_init()
 
 void avr_update()
 {
-    if (uart_is_writable(UART_ID))
+    const auto len = tud_cdc_available();
+    if (len && uart_is_writable(UART_ID))
     {
-        int ch = stdio_getchar_timeout_us(0);
+        const auto ch = tud_cdc_read_char();
         if (ch >= 0 && ch <= 0xFF)
-        {
             uart_putc_raw(UART_ID, ch);
-        }
     }
     if (uart_is_readable(UART_ID))
     {
         gpio_xor_mask(1 << 25);
-        uint8_t ch = uart_getc(UART_ID);
-        stdio_putchar_raw(ch); // send on USB
+        const auto ch = uart_getc(UART_ID);
+        tud_cdc_write_char(ch); // send on USB
+        tud_cdc_write_flush();
     }
 }
