@@ -53,7 +53,7 @@ int main()
         {
             last_trx = get_absolute_time();
             spi_write_read_blocking(spi0, &cpt, &res, 1);
-            // printf("%d %d ", cpt, res);
+            printf("%d %\n", cpt, res);
             cpt += 1;
         }
     }

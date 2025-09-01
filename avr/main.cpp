@@ -15,6 +15,7 @@ volatile uint32_t _millis;
 
 uint32_t millis()
 {
+    // Actually fires every 0.9765625 ms.
     // Disable interrupt while reading to avoid corrupted value
     RTC.PITINTCTRL &= ~RTC_PI_bm;
     const auto res = _millis;
@@ -63,10 +64,11 @@ int main(void)
     // 11. Enable the ADC by writing a ‘1’ to the ADC Enable (ENABLE) bit in the ADCn.CTRLA register.
     ADC0.CTRLA |= (1 << ADC_ENABLE_bp);
 
+    // 463 us / conversion
     ADC0.CTRLD = ADC_INITDLY_DLY32_gc; // >=25
     ADC0.SAMPCTRL = 28; // >=28
 
-    _delay_us(10); // wait until ADC is ready (6us)
+    _delay_ms(1); // wait until ADC is ready (6us)
 
     ADC0.COMMAND = ADC_STCONV_bm;
 
@@ -87,11 +89,14 @@ int main(void)
         }
         if (ADC0.INTFLAGS & ADC_RESRDY_bm)
         {
+            ADC0.INTFLAGS = ADC_RESRDY_bm;
+            PORTD.OUTTGL = PIN3_bm;
+
             const auto slope = SIGROW.TEMPSENSE0;
             const auto offset = SIGROW.TEMPSENSE1;
             const auto adc_raw = ADC0.RES;
 
-            uint32_t temp = offset - adc_raw;
+            uint32_t temp = (offset - adc_raw);
             temp *= slope;
             temp += 4096/2;
             temp /= 4096;
