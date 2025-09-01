@@ -3,6 +3,7 @@
 #include "hardware/watchdog.h"
 #include "hardware/gpio.h"
 #include "hardware/spi.h"
+#include "hardware/adc.h"
 
 #include "avr.h"
 
@@ -45,15 +46,22 @@ int main()
 
     uint8_t cpt = 0, res;
 
+    adc_init();
+    adc_select_input(ADC_TEMPERATURE_CHANNEL_NUM);
+    adc_set_temp_sensor_enabled(true);
+
     while (true)
     {
         watchdog_update();
         avr_update();
         if (get_absolute_time() - last_trx > 1'000'000) // 1000 ms
         {
+            auto adc_value = adc_read();
+            float volt = 3.3f * adc_value / 4095;
+            float temperature = 27 - (volt - 0.706f) / 0.001721f;
             last_trx = get_absolute_time();
             spi_write_read_blocking(spi0, &cpt, &res, 1);
-            printf("%d %\n", cpt, res);
+            printf("%0.2f %0.2f\n", temperature, res*0.25f);
             cpt += 1;
         }
     }

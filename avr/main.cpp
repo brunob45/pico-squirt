@@ -55,6 +55,7 @@ int main(void)
     // 5. Optional: Select the Free-Running mode by writing a ‘1’ to the Free-Running (FREERUN) bit in the ADCn.CTRLA register.
     ADC0.CTRLA |= ADC_FREERUN_bm;
     // 6. Optional: Configure the number of samples to be accumulated per conversion by writing to the Sample Accumulation Number Select (SAMPNUM) bit field in the Control B (ADCn.CTRLB) register.
+    ADC0.CTRLB = ADC_SAMPNUM_ACC4_gc;
     // 7. Configure the ADC clock (CLK_ADC) by writing to the Prescaler (PRESC) bit field in the Control C (ADCn.CTRLC) register.
     ADC0.CTRLC = ADC_PRESC_DIV256_gc; // 24MHz/256=10.67us (>8us)
     // 8. Select the positive ADC input by writing to the MUXPOS bit field in the ADCn.MUXPOS register.
@@ -94,13 +95,13 @@ int main(void)
 
             const auto slope = SIGROW.TEMPSENSE0;
             const auto offset = SIGROW.TEMPSENSE1;
-            const auto adc_raw = ADC0.RES;
+            const auto adc_raw = ADC0.RES>>2; // SAMPNUM = 4
 
             uint32_t temp = (offset - adc_raw);
             temp *= slope;
-            temp += 4096/2;
-            temp /= 4096;
-            temperature = temp - 273;
+            temp += 4096/2/4;
+            temp /= 4096/4;
+            temperature = temp - 273*4;
         }
         spi_update(temperature);
     }
