@@ -1,7 +1,7 @@
 PREFIX= # gcc/bin/ # used in windows
 CFLAGS=-mmcu=avr16dd28 -B lib/gcc/dev -isystem lib/gcc/include -O2 -DF_CPU=24000000UL
 
-SRCS=main.cpp spi.cpp adc.cpp clock.cpp #twi.cpp 
+SRCS=main.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 NAME=main
 
