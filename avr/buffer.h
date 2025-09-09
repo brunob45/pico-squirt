@@ -2,7 +2,7 @@
 
 class Buffer
 {
-    uint8_t buf[8];
+    uint8_t buf[16];
     uint8_t head, tail, full;
 
 public:
@@ -13,6 +13,8 @@ public:
         {
             buf[head] = value;
             head += 1;
+            if (head >= sizeof(buf))
+                head = 0;
             full = (head == tail);
             ret = true;
         }
@@ -26,6 +28,8 @@ public:
         {
             value = buf[tail];
             tail += 1;
+            if (tail >= sizeof(buf))
+                tail = 0;
             full = 0;
         }
         return value;
