@@ -10,58 +10,65 @@
 
 #include "adc.h"
 #include "spi.h"
+#include "clock.h"
+#include "buffer.h"
 
-volatile uint32_t _millis;
+Buffer buf;
 
-uint32_t millis()
+ISR(SPI0_INT_vect)
 {
-    // Actually fires every 0.9765625 ms.
-    // Disable interrupt while reading to avoid corrupted value
-    RTC.PITINTCTRL &= ~RTC_PI_bm;
-    const auto res = _millis;
-    RTC.PITINTCTRL |= RTC_PI_bm;
-    return res;
+    SPI0.INTFLAGS = SPI_IF_bm; // Clear interrupt flag
+
+    uint8_t value = 0;
+    buf.get(&value);
+    SPI0.DATA = value; // Send value
 }
 
-ISR(RTC_PIT_vect)
+ISR(ADC0_RESRDY_vect)
 {
-    // Do not forget to clear the flag!
-    RTC.PITINTFLAGS = RTC_PI_bm;
+    const uint8_t channels[] = {1, 2, 3, 4, 5, 6, 7};
+    static uint8_t index = 0;
 
-    // Increment millis counter
-    _millis += 1;
+    // 2.63 kHz (average)
+    // clear interrupt flag
+    ADC0.INTFLAGS = ADC_RESRDY_bm;
+    // PORTD.OUTTGL = PIN3_bm;
+
+    // result for channel n is ready
+    buf.put(channels[index]);
+    buf.put(ADC0.RESL);
+    buf.put(ADC0.RESH);
+
+    // prepare channel n+1
+    index += 1;
+    if (index >= 7)
+        index = 0;
+
+    ADC0.MUXPOS = channels[index];
+    // start conversion
+    ADC0.COMMAND = ADC_STCONV_bm;
 }
 
 int main(void)
 {
-    // Clock init - 24 MHz
-    CCP = CCP_IOREG_gc;
-    CLKCTRL.OSCHFCTRLA = CLKCTRL_FRQSEL_24M_gc;
+    // PORTD.DIRSET = 0xFF;
 
-    // RTC init - 1 kHz interrupt
-    RTC.CLKSEL = RTC_CLKSEL_OSC32K_gc;
-    RTC.PITINTCTRL = RTC_PI_bm;
-    RTC.PITCTRLA = RTC_PERIOD_CYC32_gc | RTC_PITEN_bm;
-
-    PORTD.DIRSET = 0xFF;
-
+    clk_init();
     adc_init();
     spi_init();
 
     sei();
 
-    auto last = millis();
+    uint32_t last = millis();
     int8_t temperature;
 
     while (1)
     {
-        const auto now = millis();
+        const uint32_t now = millis();
         if (now - last > 500)
         {
             last = now;
-            PORTD.OUTTGL = PIN1_bm;
+            // PORTD.OUTTGL = PIN1_bm;
         }
-        int16_t temperature = adc_update();
-        spi_update(temperature);
     }
 }

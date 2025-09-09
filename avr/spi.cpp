@@ -9,17 +9,6 @@
 // PC2 => SCK
 // PC3 => CS
 
-volatile uint8_t _value;
-
-ISR(SPI0_INT_vect)
-{
-    SPI0.INTFLAGS = SPI_IF_bm; // Clear interrupt flag
-
-    SPI0.DATA = _value; // Send value
-
-    PORTD.OUTTGL = PIN2_bm;
-}
-
 void spi_init()
 {
     // Select correct PORTMUX
@@ -39,9 +28,4 @@ void spi_init()
 
     // Enable interrupt
     SPI0.INTCTRL = SPI_IE_bm;
-}
-
-void spi_update(uint8_t value)
-{
-    _value = value;
 }
