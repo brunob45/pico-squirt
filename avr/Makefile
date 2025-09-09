@@ -17,6 +17,9 @@ $(NAME).elf: $(OBJS)
 	$(PREFIX)avr-gcc $(CFLAGS) -o $(NAME).elf $(OBJS)
 	$(PREFIX)avr-size $(NAME).elf
 
+$(NAME).S: $(NAME).elf
+	$(PREFIX)avr-objdump -S $(NAME).elf > $(NAME).S
+
 %.o: %.cpp
 	$(PREFIX)avr-gcc $(CFLAGS) -c $<
 

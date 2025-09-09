@@ -11,7 +11,7 @@
 
 #include "buffer.h"
 
-Buffer buf;
+static Buffer buf;
 volatile uint32_t _millis;
 
 ISR(RTC_PIT_vect)
@@ -62,7 +62,7 @@ ISR(ADC0_RESRDY_vect)
     ADC0.COMMAND = ADC_STCONV_bm;
 }
 
-void clk_init()
+static void clk_init()
 {
     // Clock init - 24 MHz
     CCP = CCP_IOREG_gc;
@@ -74,7 +74,7 @@ void clk_init()
     RTC.PITCTRLA = RTC_PERIOD_CYC32_gc | RTC_PITEN_bm;
 }
 
-uint32_t millis()
+static uint32_t millis()
 {
     // Actually fires every 0.9765625 ms.
     // Disable interrupt while reading to avoid corrupted value
@@ -84,7 +84,7 @@ uint32_t millis()
     return res;
 }
 
-void adc_init()
+static void adc_init()
 {
     // ADC init
     // 1. Configure the ADC voltage reference in the Voltage Reference (VREF) peripheral.
@@ -119,7 +119,7 @@ void adc_init()
     // 6. Process the measurement result
 }
 
-void spi_init()
+static void spi_init()
 {
     // PORTMUX = ALT5
     // PC0 => MOSI
