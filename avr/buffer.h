@@ -1,5 +1,4 @@
 #include <avr/io.h>
-#include <util/atomic.h>
 
 class Buffer
 {
@@ -10,35 +9,25 @@ public:
     bool put(uint8_t value)
     {
         bool ret = false;
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        if (!full)
         {
-            if (!full)
-            {
-                buf[head] = value;
-                head += 1;
-                full = (head == tail);
-                ret = true;
-            }
+            buf[head] = value;
+            head += 1;
+            full = (head == tail);
+            ret = true;
         }
         return ret;
     }
 
-    bool get(uint8_t *value)
+    uint8_t get()
     {
-        bool ret = false;
-        if (value == 0)
-            return ret; // null pointer
-
-        ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+        uint8_t value = 0;
+        if ((head != tail) || full)
         {
-            if ((head != tail) || full)
-            {
-                *value = buf[tail];
-                tail += 1;
-                full = 0;
-                ret = true;
-            }
+            value = buf[tail];
+            tail += 1;
+            full = 0;
         }
-        return ret;
+        return value;
     }
 };

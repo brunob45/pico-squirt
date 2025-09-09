@@ -29,8 +29,7 @@ ISR(SPI0_INT_vect)
     SPI0.INTFLAGS = SPI_IF_bm;
 
     // Get analog value
-    uint8_t value = 0;
-    buf.get(&value);
+    const uint8_t value = buf.get();
 
     // Send value
     SPI0.DATA = value;
