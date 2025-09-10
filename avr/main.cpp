@@ -150,7 +150,7 @@ static void SPI0_init()
 
 int main(void)
 {
-    PORTA.DIRSET = (1 << 6); // PA6 is the top right pin
+    PORTA.DIRSET = PIN6_bm; // PA6 is the top right pin
 
     CLK_init();
     ADC0_init();
@@ -168,7 +168,7 @@ int main(void)
         if (now - last > 500)
         {
             last = now;
-            PORTA.OUTTGL = (1 << 6);
+            PORTA.OUTTGL = PIN6_bm;
         }
     }
 }
