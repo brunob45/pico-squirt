@@ -37,7 +37,15 @@ ISR(SPI0_INT_vect)
 
 ISR(ADC0_RESRDY_vect)
 {
-    const uint8_t channels[] = {1, 2, 3, 4, 5, 6, 7};
+    const uint8_t channels[] = {
+        ADC_MUXPOS_AIN1_gc,
+        ADC_MUXPOS_AIN2_gc,
+        ADC_MUXPOS_AIN3_gc,
+        ADC_MUXPOS_AIN4_gc,
+        ADC_MUXPOS_AIN5_gc,
+        ADC_MUXPOS_AIN6_gc,
+        ADC_MUXPOS_AIN7_gc,
+    };
     static uint8_t index = 0;
 
     // 2.63 kHz (average)
@@ -61,13 +69,17 @@ ISR(ADC0_RESRDY_vect)
     ADC0.COMMAND = ADC_STCONV_bm;
 }
 
-static void clk_init()
+static void CLK_init()
 {
-    // Clock init - 24 MHz
+    // Select 24 MHz internal oscillator
     CCP = CCP_IOREG_gc;
     CLKCTRL.OSCHFCTRLA = CLKCTRL_FRQSEL_24M_gc;
 
-    // RTC init - 1 kHz interrupt
+    // Wait until oscillator is stable
+    while (!(CLKCTRL.OSCHFCTRLA & CLKCTRL_OSCHFS_bm))
+        ;
+
+    // PIT init - 1 kHz interrupt
     RTC.CLKSEL = RTC_CLKSEL_OSC32K_gc;
     RTC.PITINTCTRL = RTC_PI_bm;
     RTC.PITCTRLA = RTC_PERIOD_CYC32_gc | RTC_PITEN_bm;
@@ -83,60 +95,44 @@ static uint32_t millis()
     return res;
 }
 
-static void adc_init()
+static void ADC0_init()
 {
-    // ADC init
-    // 1. Configure the ADC voltage reference in the Voltage Reference (VREF) peripheral.
-    VREF.ADC0REF = VREF_REFSEL_VDD_gc; // VREF_REFSEL_2V048_gc;
-    // 2. Optional: Select between Single-Ended or Differential mode by writing to the Conversion Mode (CONVMODE) bit in the Control A (ADCn.CTRLA) register.
-    // 3. Configure the resolution by writing to the Resolution Selection (RESSEL) bit field in the ADCn.CTRLA register.
-    ADC0.CTRLA = ADC_RESSEL_12BIT_gc;
-    // 4. Optional: Configure to left adjust by writing a ‘1’ to the Left Adjust Result (LEFTADJ) bit in the ADCn.CTRLA register.
-    // 5. Optional: Select the Free-Running mode by writing a ‘1’ to the Free-Running (FREERUN) bit in the ADCn.CTRLA register.
-    ADC0.CTRLA &= ~ADC_FREERUN_bm;
-    // 6. Optional: Configure the number of samples to be accumulated per conversion by writing to the Sample Accumulation Number Select (SAMPNUM) bit field in the Control B (ADCn.CTRLB) register.
+    // Configure the ADC voltage reference in the Voltage Reference (VREF) peripheral.
+    VREF.ADC0REF = VREF_REFSEL_VDD_gc;
+
+    // Configure the number of samples to be accumulated per conversion by writing to the Sample Accumulation Number Select (SAMPNUM) bit field in the Control B (ADCn.CTRLB) register.
     ADC0.CTRLB = ADC_SAMPNUM_ACC4_gc;
-    // 7. Configure the ADC clock (CLK_ADC) by writing to the Prescaler (PRESC) bit field in the Control C (ADCn.CTRLC) register.
-    ADC0.CTRLC = ADC_PRESC_DIV24_gc; // 24MHz/24=1us (0.5>x>8us)
-    // 8. Select the positive ADC input by writing to the MUXPOS bit field in the ADCn.MUXPOS register.
-    ADC0.MUXPOS = 1; // ADC_MUXPOS_TEMPSENSE_gc;
-    // 9. Optional: Select the negative ADC input by writing to the MUXNEG bit field in the ADCn.MUXNEG register.
-    // 10. Optional: Enable Start Event input by writing a ‘1’ to the Start Event Input (STARTEI) bit in the Event Control (ADCn.EVCTRL) register, and configure the Event System accordingly.
-    // 11. Enable the ADC by writing a ‘1’ to the ADC Enable (ENABLE) bit in the ADCn.CTRLA register.
+
+    // Configure the ADC clock (CLK_ADC) by writing to the Prescaler (PRESC) bit field in the Control C (ADCn.CTRLC) register.
+    ADC0.CTRLC = ADC_PRESC_DIV24_gc; // 24 MHz / 24 = 1 MHz => 1 us (0.5 > x > 8us)
+
+    // Select the positive ADC input by writing to the MUXPOS bit field in the ADCn.MUXPOS register.
+    ADC0.MUXPOS = ADC_MUXPOS_AIN1_gc;
+
+    // Enable the ADC by writing a ‘1’ to the ADC Enable (ENABLE) bit in the ADCn.CTRLA register.
     ADC0.CTRLA |= (1 << ADC_ENABLE_bp);
 
-    _delay_us(100); // wait until ADC is ready (>6us)
+    // Wait until ADC is ready (>6us)
+    _delay_us(100);
 
-    // 1. In the Voltage Reference (VREF) peripheral, select the internal 2.048V reference as the ADC reference voltage.
-    // 2. Select the temperature sensor as input in the ADCn.MUXPOS register.
-    // 3. Configure the Initialization Delay by writing a configuration ≥ 25 × fCLK_ADC µs to the Initialization Delay (INITDLY) bit field in the Control D (ADCn.CTRLD) register.
-    ADC0.CTRLD = ADC_INITDLY_DLY32_gc | ADC_SAMPDLY_DLY0_gc; // fCLK_ADC=1MHz=1us
-    // 4. Configure the ADC Sample Length by writing a configuration ≥ 28 µs × fCLK_ADC to the Sample Length (SAMPLEN) bit field in the SAMPCTRL (ADCn.SAMPCTRL) register.
-    ADC0.SAMPCTRL = 32; // fCLK_ADC=1MHz=1us
-    // 5. Acquire the temperature sensor output voltage by running a 12-bit, right-adjusted, single-ended conversion.
+    // Start conversion
     ADC0.COMMAND = ADC_STCONV_bm;
-    // 6. Process the measurement result
 }
 
-static void spi_init()
+static void SPI0_init()
 {
     // PORTMUX = ALT5
     // PC0 => MOSI
     // PC1 => MISO
     // PC2 => SCK
     // PC3 => CS
-    PORTMUX.SPIROUTEA = 0x05;
+    PORTMUX.SPIROUTEA = PORTMUX_SPI0_ALT5_gc;
 
-    // Initialize the SPI to a basic functional state by following these steps:
-    // 1. Configure the SS pin in the port peripheral.
-    PORTC.DIRSET = PIN1_bm; // Set MISO as OUTPUT
-    // 2. Select the SPI host/client operation by writing the Host/Client Select (MASTER) bit in the Control A (SPIn.CTRLA) register.
-    // 3. In Host mode, select the clock speed by writing the Prescaler (PRESC) bits and the Clock Double (CLK2X) bit in SPIn.CTRLA.
-    // 4. Optional: Select the Data Transfer mode by writing to the MODE bits in the Control B (SPIn.CTRLB) register.
-    // 5. Optional: Write the Data Order (DORD) bit in SPIn.CTRLA.
-    // 6. Optional: Set up the Buffer mode by writing the BUFEN and BUFWR bits in the Control B (SPIn.CTRLB) register.
-    // 7. Optional: To disable the multi-host support in Host mode, write ‘1’ to the Client Select Disable (SSD) bit in SPIn.CTRLB.
-    // 8. Enable the SPI by writing a ‘1’ to the ENABLE bit in SPIn.CTRLA
+    // Set MISO (PC1) as output, others as input
+    PORTC.DIRSET = PIN1_bm;                     // MISO
+    PORTC.DIRCLR = PIN0_bm | PIN2_bm | PIN3_bm; // MOSI, SCK, SS
+
+    // Enable the SPI by writing a ‘1’ to the ENABLE bit in SPIn.CTRLA
     SPI0.CTRLA = SPI_ENABLE_bm;
 
     // Enable interrupt
@@ -147,9 +143,9 @@ int main(void)
 {
     PORTA.DIRSET = (1 << 6); // PA6 is the top right pin
 
-    clk_init();
-    adc_init();
-    spi_init();
+    CLK_init();
+    ADC0_init();
+    SPI0_init();
 
     sei();
 

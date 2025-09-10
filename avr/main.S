@@ -64,7 +64,7 @@ Disassembly of section .text:
   a8:	b2 07       	cpc	r27, r18
   aa:	e1 f7       	brne	.-8      	; 0xa4 <.do_clear_bss_loop>
   ac:	0e 94 70 01 	call	0x2e0	; 0x2e0 <main>
-  b0:	0c 94 e2 01 	jmp	0x3c4	; 0x3c4 <_exit>
+  b0:	0c 94 dd 01 	jmp	0x3ba	; 0x3ba <_exit>
 
 000000b4 <__bad_interrupt>:
   b4:	0c 94 00 00 	jmp	0	; 0x0 <__vectors>
@@ -170,7 +170,7 @@ Disassembly of section .text:
  194:	cd bf       	out	0x3d, r28	; 61
  196:	de bf       	out	0x3e, r29	; 62
  198:	87 e0       	ldi	r24, 0x07	; 7
- 19a:	e8 ec       	ldi	r30, 0xC8	; 200
+ 19a:	ee eb       	ldi	r30, 0xBE	; 190
  19c:	f3 e8       	ldi	r31, 0x83	; 131
  19e:	de 01       	movw	r26, r28
  1a0:	11 96       	adiw	r26, 0x01	; 1
@@ -307,85 +307,83 @@ Disassembly of section .text:
  2de:	72 cf       	rjmp	.-284    	; 0x1c4 <__vector_26+0x58>
 
 000002e0 <main>:
- 2e0:	40 e4       	ldi	r20, 0x40	; 64
- 2e2:	40 93 01 04 	sts	0x0401, r20	; 0x800401 <__RODATA_PM_OFFSET__+0x7f8401>
+ 2e0:	80 e4       	ldi	r24, 0x40	; 64
+ 2e2:	80 93 01 04 	sts	0x0401, r24	; 0x800401 <__RODATA_PM_OFFSET__+0x7f8401>
  2e6:	88 ed       	ldi	r24, 0xD8	; 216
  2e8:	84 bf       	out	0x34, r24	; 52
  2ea:	84 e2       	ldi	r24, 0x24	; 36
  2ec:	80 93 68 00 	sts	0x0068, r24	; 0x800068 <__RODATA_PM_OFFSET__+0x7f8068>
- 2f0:	10 92 47 01 	sts	0x0147, r1	; 0x800147 <__RODATA_PM_OFFSET__+0x7f8147>
- 2f4:	81 e0       	ldi	r24, 0x01	; 1
- 2f6:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 2fa:	91 e2       	ldi	r25, 0x21	; 33
- 2fc:	90 93 50 01 	sts	0x0150, r25	; 0x800150 <__RODATA_PM_OFFSET__+0x7f8150>
- 300:	35 e0       	ldi	r19, 0x05	; 5
- 302:	30 93 b0 00 	sts	0x00B0, r19	; 0x8000b0 <__RODATA_PM_OFFSET__+0x7f80b0>
- 306:	10 92 00 06 	sts	0x0600, r1	; 0x800600 <__RODATA_PM_OFFSET__+0x7f8600>
- 30a:	90 91 00 06 	lds	r25, 0x0600	; 0x800600 <__RODATA_PM_OFFSET__+0x7f8600>
- 30e:	9d 7f       	andi	r25, 0xFD	; 253
- 310:	90 93 00 06 	sts	0x0600, r25	; 0x800600 <__RODATA_PM_OFFSET__+0x7f8600>
- 314:	22 e0       	ldi	r18, 0x02	; 2
- 316:	20 93 01 06 	sts	0x0601, r18	; 0x800601 <__RODATA_PM_OFFSET__+0x7f8601>
- 31a:	96 e0       	ldi	r25, 0x06	; 6
- 31c:	90 93 02 06 	sts	0x0602, r25	; 0x800602 <__RODATA_PM_OFFSET__+0x7f8602>
- 320:	80 93 08 06 	sts	0x0608, r24	; 0x800608 <__RODATA_PM_OFFSET__+0x7f8608>
- 324:	90 91 00 06 	lds	r25, 0x0600	; 0x800600 <__RODATA_PM_OFFSET__+0x7f8600>
- 328:	91 60       	ori	r25, 0x01	; 1
- 32a:	90 93 00 06 	sts	0x0600, r25	; 0x800600 <__RODATA_PM_OFFSET__+0x7f8600>
- 32e:	e7 e5       	ldi	r30, 0x57	; 87
- 330:	f2 e0       	ldi	r31, 0x02	; 2
- 332:	31 97       	sbiw	r30, 0x01	; 1
- 334:	f1 f7       	brne	.-4      	; 0x332 <main+0x52>
- 336:	00 c0       	rjmp	.+0      	; 0x338 <main+0x58>
- 338:	00 00       	nop
- 33a:	40 93 03 06 	sts	0x0603, r20	; 0x800603 <__RODATA_PM_OFFSET__+0x7f8603>
- 33e:	90 e2       	ldi	r25, 0x20	; 32
- 340:	90 93 05 06 	sts	0x0605, r25	; 0x800605 <__RODATA_PM_OFFSET__+0x7f8605>
- 344:	80 93 0a 06 	sts	0x060A, r24	; 0x80060a <__RODATA_PM_OFFSET__+0x7f860a>
- 348:	30 93 e5 05 	sts	0x05E5, r19	; 0x8005e5 <__RODATA_PM_OFFSET__+0x7f85e5>
- 34c:	20 93 41 04 	sts	0x0441, r18	; 0x800441 <__RODATA_PM_OFFSET__+0x7f8441>
- 350:	80 93 40 09 	sts	0x0940, r24	; 0x800940 <__RODATA_PM_OFFSET__+0x7f8940>
- 354:	80 93 42 09 	sts	0x0942, r24	; 0x800942 <__RODATA_PM_OFFSET__+0x7f8942>
- 358:	78 94       	sei
- 35a:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 35e:	8e 7f       	andi	r24, 0xFE	; 254
- 360:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 364:	00 91 00 78 	lds	r16, 0x7800	; 0x807800 <__DATA_REGION_ORIGIN__>
- 368:	10 91 01 78 	lds	r17, 0x7801	; 0x807801 <__DATA_REGION_ORIGIN__+0x1>
- 36c:	20 91 02 78 	lds	r18, 0x7802	; 0x807802 <__DATA_REGION_ORIGIN__+0x2>
- 370:	30 91 03 78 	lds	r19, 0x7803	; 0x807803 <__DATA_REGION_ORIGIN__+0x3>
- 374:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 378:	81 60       	ori	r24, 0x01	; 1
- 37a:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 37e:	e0 e4       	ldi	r30, 0x40	; 64
- 380:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 384:	8e 7f       	andi	r24, 0xFE	; 254
- 386:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 38a:	40 91 00 78 	lds	r20, 0x7800	; 0x807800 <__DATA_REGION_ORIGIN__>
- 38e:	50 91 01 78 	lds	r21, 0x7801	; 0x807801 <__DATA_REGION_ORIGIN__+0x1>
- 392:	60 91 02 78 	lds	r22, 0x7802	; 0x807802 <__DATA_REGION_ORIGIN__+0x2>
- 396:	70 91 03 78 	lds	r23, 0x7803	; 0x807803 <__DATA_REGION_ORIGIN__+0x3>
- 39a:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 39e:	81 60       	ori	r24, 0x01	; 1
- 3a0:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 3a4:	db 01       	movw	r26, r22
- 3a6:	ca 01       	movw	r24, r20
- 3a8:	80 1b       	sub	r24, r16
- 3aa:	91 0b       	sbc	r25, r17
- 3ac:	a2 0b       	sbc	r26, r18
- 3ae:	b3 0b       	sbc	r27, r19
- 3b0:	85 3f       	cpi	r24, 0xF5	; 245
- 3b2:	91 40       	sbci	r25, 0x01	; 1
- 3b4:	a1 05       	cpc	r26, r1
- 3b6:	b1 05       	cpc	r27, r1
- 3b8:	18 f3       	brcs	.-58     	; 0x380 <main+0xa0>
- 3ba:	e0 93 07 04 	sts	0x0407, r30	; 0x800407 <__RODATA_PM_OFFSET__+0x7f8407>
- 3be:	8a 01       	movw	r16, r20
- 3c0:	9b 01       	movw	r18, r22
- 3c2:	de cf       	rjmp	.-68     	; 0x380 <main+0xa0>
+ 2f0:	80 91 68 00 	lds	r24, 0x0068	; 0x800068 <__RODATA_PM_OFFSET__+0x7f8068>
+ 2f4:	81 ff       	sbrs	r24, 1
+ 2f6:	fc cf       	rjmp	.-8      	; 0x2f0 <main+0x10>
+ 2f8:	10 92 47 01 	sts	0x0147, r1	; 0x800147 <__RODATA_PM_OFFSET__+0x7f8147>
+ 2fc:	81 e0       	ldi	r24, 0x01	; 1
+ 2fe:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 302:	91 e2       	ldi	r25, 0x21	; 33
+ 304:	90 93 50 01 	sts	0x0150, r25	; 0x800150 <__RODATA_PM_OFFSET__+0x7f8150>
+ 308:	35 e0       	ldi	r19, 0x05	; 5
+ 30a:	30 93 b0 00 	sts	0x00B0, r19	; 0x8000b0 <__RODATA_PM_OFFSET__+0x7f80b0>
+ 30e:	22 e0       	ldi	r18, 0x02	; 2
+ 310:	20 93 01 06 	sts	0x0601, r18	; 0x800601 <__RODATA_PM_OFFSET__+0x7f8601>
+ 314:	96 e0       	ldi	r25, 0x06	; 6
+ 316:	90 93 02 06 	sts	0x0602, r25	; 0x800602 <__RODATA_PM_OFFSET__+0x7f8602>
+ 31a:	80 93 08 06 	sts	0x0608, r24	; 0x800608 <__RODATA_PM_OFFSET__+0x7f8608>
+ 31e:	90 91 00 06 	lds	r25, 0x0600	; 0x800600 <__RODATA_PM_OFFSET__+0x7f8600>
+ 322:	91 60       	ori	r25, 0x01	; 1
+ 324:	90 93 00 06 	sts	0x0600, r25	; 0x800600 <__RODATA_PM_OFFSET__+0x7f8600>
+ 328:	e7 e5       	ldi	r30, 0x57	; 87
+ 32a:	f2 e0       	ldi	r31, 0x02	; 2
+ 32c:	31 97       	sbiw	r30, 0x01	; 1
+ 32e:	f1 f7       	brne	.-4      	; 0x32c <main+0x4c>
+ 330:	00 c0       	rjmp	.+0      	; 0x332 <main+0x52>
+ 332:	00 00       	nop
+ 334:	80 93 0a 06 	sts	0x060A, r24	; 0x80060a <__RODATA_PM_OFFSET__+0x7f860a>
+ 338:	30 93 e5 05 	sts	0x05E5, r19	; 0x8005e5 <__RODATA_PM_OFFSET__+0x7f85e5>
+ 33c:	20 93 41 04 	sts	0x0441, r18	; 0x800441 <__RODATA_PM_OFFSET__+0x7f8441>
+ 340:	9d e0       	ldi	r25, 0x0D	; 13
+ 342:	90 93 42 04 	sts	0x0442, r25	; 0x800442 <__RODATA_PM_OFFSET__+0x7f8442>
+ 346:	80 93 40 09 	sts	0x0940, r24	; 0x800940 <__RODATA_PM_OFFSET__+0x7f8940>
+ 34a:	80 93 42 09 	sts	0x0942, r24	; 0x800942 <__RODATA_PM_OFFSET__+0x7f8942>
+ 34e:	78 94       	sei
+ 350:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 354:	8e 7f       	andi	r24, 0xFE	; 254
+ 356:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 35a:	00 91 00 78 	lds	r16, 0x7800	; 0x807800 <__DATA_REGION_ORIGIN__>
+ 35e:	10 91 01 78 	lds	r17, 0x7801	; 0x807801 <__DATA_REGION_ORIGIN__+0x1>
+ 362:	20 91 02 78 	lds	r18, 0x7802	; 0x807802 <__DATA_REGION_ORIGIN__+0x2>
+ 366:	30 91 03 78 	lds	r19, 0x7803	; 0x807803 <__DATA_REGION_ORIGIN__+0x3>
+ 36a:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 36e:	81 60       	ori	r24, 0x01	; 1
+ 370:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 374:	e0 e4       	ldi	r30, 0x40	; 64
+ 376:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 37a:	8e 7f       	andi	r24, 0xFE	; 254
+ 37c:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 380:	40 91 00 78 	lds	r20, 0x7800	; 0x807800 <__DATA_REGION_ORIGIN__>
+ 384:	50 91 01 78 	lds	r21, 0x7801	; 0x807801 <__DATA_REGION_ORIGIN__+0x1>
+ 388:	60 91 02 78 	lds	r22, 0x7802	; 0x807802 <__DATA_REGION_ORIGIN__+0x2>
+ 38c:	70 91 03 78 	lds	r23, 0x7803	; 0x807803 <__DATA_REGION_ORIGIN__+0x3>
+ 390:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 394:	81 60       	ori	r24, 0x01	; 1
+ 396:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 39a:	db 01       	movw	r26, r22
+ 39c:	ca 01       	movw	r24, r20
+ 39e:	80 1b       	sub	r24, r16
+ 3a0:	91 0b       	sbc	r25, r17
+ 3a2:	a2 0b       	sbc	r26, r18
+ 3a4:	b3 0b       	sbc	r27, r19
+ 3a6:	85 3f       	cpi	r24, 0xF5	; 245
+ 3a8:	91 40       	sbci	r25, 0x01	; 1
+ 3aa:	a1 05       	cpc	r26, r1
+ 3ac:	b1 05       	cpc	r27, r1
+ 3ae:	18 f3       	brcs	.-58     	; 0x376 <main+0x96>
+ 3b0:	e0 93 07 04 	sts	0x0407, r30	; 0x800407 <__RODATA_PM_OFFSET__+0x7f8407>
+ 3b4:	8a 01       	movw	r16, r20
+ 3b6:	9b 01       	movw	r18, r22
+ 3b8:	de cf       	rjmp	.-68     	; 0x376 <main+0x96>
 
-000003c4 <_exit>:
- 3c4:	f8 94       	cli
+000003ba <_exit>:
+ 3ba:	f8 94       	cli
 
-000003c6 <__stop_program>:
- 3c6:	ff cf       	rjmp	.-2      	; 0x3c6 <__stop_program>
+000003bc <__stop_program>:
+ 3bc:	ff cf       	rjmp	.-2      	; 0x3bc <__stop_program>
