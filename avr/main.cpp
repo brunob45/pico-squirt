@@ -64,7 +64,7 @@ static void ADC0_RESRDY()
 
     // prepare channel n+1
     index += 1;
-    if (index >= 7)
+    if (index >= sizeof(ADC_INPUTS))
         index = 0;
 
     ADC0.MUXPOS = ADC_INPUTS[index];
