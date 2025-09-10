@@ -14,6 +14,16 @@
 static Buffer buf;
 volatile uint32_t _millis;
 
+const uint8_t ADC_INPUTS[] = {
+    ADC_MUXPOS_AIN1_gc,
+    ADC_MUXPOS_AIN2_gc,
+    ADC_MUXPOS_AIN3_gc,
+    ADC_MUXPOS_AIN4_gc,
+    ADC_MUXPOS_AIN5_gc,
+    ADC_MUXPOS_AIN6_gc,
+    ADC_MUXPOS_AIN7_gc,
+};
+
 ISR(RTC_PIT_vect)
 {
     // Clear interrupt flag
@@ -37,15 +47,6 @@ ISR(SPI0_INT_vect)
 
 ISR(ADC0_RESRDY_vect)
 {
-    const uint8_t channels[] = {
-        ADC_MUXPOS_AIN1_gc,
-        ADC_MUXPOS_AIN2_gc,
-        ADC_MUXPOS_AIN3_gc,
-        ADC_MUXPOS_AIN4_gc,
-        ADC_MUXPOS_AIN5_gc,
-        ADC_MUXPOS_AIN6_gc,
-        ADC_MUXPOS_AIN7_gc,
-    };
     static uint8_t index = 0;
 
     // 16 kHz (in theory)
@@ -54,7 +55,7 @@ ISR(ADC0_RESRDY_vect)
     // PORTD.OUTTGL = PIN3_bm;
 
     // result for channel n is ready
-    buf.put(channels[index]);
+    buf.put(ADC_INPUTS[index]);
     buf.put(ADC0.RESL);
     buf.put(ADC0.RESH);
 
@@ -63,7 +64,7 @@ ISR(ADC0_RESRDY_vect)
     if (index >= 7)
         index = 0;
 
-    ADC0.MUXPOS = channels[index];
+    ADC0.MUXPOS = ADC_INPUTS[index];
 
     // start conversion
     ADC0.COMMAND = ADC_STCONV_bm;
@@ -117,6 +118,9 @@ static void ADC0_init()
 
     // Start conversion
     ADC0.COMMAND = ADC_STCONV_bm;
+
+    // Enable interrupt
+    ADC0.INTCTRL = ADC_RESRDY_bm;
 }
 
 static void SPI0_init()
@@ -150,7 +154,6 @@ int main(void)
     sei();
 
     uint32_t last = millis();
-    int8_t temperature;
 
     while (1)
     {
