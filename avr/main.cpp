@@ -48,7 +48,7 @@ ISR(ADC0_RESRDY_vect)
     };
     static uint8_t index = 0;
 
-    // 2.63 kHz (average)
+    // 16 kHz (in theory)
     // Clear interrupt flag
     ADC0.INTFLAGS = ADC_RESRDY_bm;
     // PORTD.OUTTGL = PIN3_bm;
