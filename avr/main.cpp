@@ -179,13 +179,14 @@ int main(void)
             PORTA.OUTTGL = PIN6_bm;
 
             // Read result
-            uint8_t mux = ADC_INPUTS[index];
+            uint8_t mux = ADC0.MUXPOS;
             uint16_t res = ADC0.RES;
 
             // Select next input
             index += 1;
             if (index >= sizeof(ADC_INPUTS))
                 index = 0;
+            ADC0.MUXPOS = ADC_INPUTS[index];
 
             // Start conversion
             ADC0.COMMAND = ADC_STCONV_bm;
