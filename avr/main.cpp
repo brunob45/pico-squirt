@@ -7,6 +7,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/wdt.h>
 #include <util/delay.h>
 
 #include "buffer.h"
@@ -80,9 +81,13 @@ static void CLK_init()
     while (!(CLKCTRL.OSCHFCTRLA & CLKCTRL_OSCHFS_bm))
         ;
 
-    // PIT init - 1 kHz interrupt
+    // RTC - Select 32kHz CLK
     RTC.CLKSEL = RTC_CLKSEL_OSC32K_gc;
+
+    // Enable PIT interrupt
     RTC.PITINTCTRL = RTC_PI_bm;
+
+    // Enable PIT @ 1kHz
     RTC.PITCTRLA = RTC_PERIOD_CYC32_gc | RTC_PITEN_bm;
 }
 
@@ -150,6 +155,7 @@ int main(void)
     CLK_init();
     ADC0_init();
     SPI0_init();
+    wdt_enable(WDTO_250MS);
 
     sei();
 
@@ -157,6 +163,7 @@ int main(void)
 
     while (1)
     {
+        wdt_reset();
         const uint32_t now = millis();
         if (now - last > 500)
         {
