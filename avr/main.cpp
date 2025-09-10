@@ -12,7 +12,7 @@
 
 #include "buffer.h"
 
-static Buffer buf;
+// static Buffer buf;
 volatile uint32_t _millis;
 
 const uint8_t ADC_INPUTS[] = {
@@ -35,43 +35,43 @@ ISR(RTC_PIT_vect)
 }
 
 // ISR(SPI0_INT_vect)
-static void SPI0_INT()
-{
-    // Clear interrupt flag
-    SPI0.INTFLAGS = SPI_IF_bm;
+// static void SPI0_INT()
+// {
+//     // Clear interrupt flag
+//     SPI0.INTFLAGS = SPI_IF_bm;
 
-    // Get analog value
-    const uint8_t value = buf.get();
+//     // Get analog value
+//     const uint8_t value = buf.get();
 
-    // Send value
-    SPI0.DATA = value;
-}
+//     // Send value
+//     SPI0.DATA = value;
+// }
 
 // ISR(ADC0_RESRDY_vect)
-static void ADC0_RESRDY()
-{
-    static uint8_t index = 0;
+// static void ADC0_RESRDY()
+// {
+//     static uint8_t index = 0;
 
-    // 16 kHz (in theory)
-    // Clear interrupt flag
-    ADC0.INTFLAGS = ADC_RESRDY_bm;
-    // PORTD.OUTTGL = PIN3_bm;
+//     // 16 kHz (in theory)
+//     // Clear interrupt flag
+//     ADC0.INTFLAGS = ADC_RESRDY_bm;
+//     // PORTD.OUTTGL = PIN3_bm;
 
-    // result for channel n is ready
-    buf.put(ADC_INPUTS[index]);
-    buf.put(ADC0.RESL);
-    buf.put(ADC0.RESH);
+//     // result for channel n is ready
+//     buf.put(ADC_INPUTS[index]);
+//     buf.put(ADC0.RESL);
+//     buf.put(ADC0.RESH);
 
-    // prepare channel n+1
-    index += 1;
-    if (index >= sizeof(ADC_INPUTS))
-        index = 0;
+//     // prepare channel n+1
+//     index += 1;
+//     if (index >= sizeof(ADC_INPUTS))
+//         index = 0;
 
-    ADC0.MUXPOS = ADC_INPUTS[index];
+//     ADC0.MUXPOS = ADC_INPUTS[index];
 
-    // start conversion
-    ADC0.COMMAND = ADC_STCONV_bm;
-}
+//     // start conversion
+//     ADC0.COMMAND = ADC_STCONV_bm;
+// }
 
 static void CLK_init()
 {
@@ -162,6 +162,7 @@ int main(void)
     sei();
 
     uint32_t last = millis();
+    uint8_t index;
 
     while (1)
     {
@@ -170,15 +171,42 @@ int main(void)
         if (now - last > 500)
         {
             last = now;
-            PORTA.OUTTGL = PIN6_bm;
         }
         if (ADC0.INTFLAGS & ADC_RESRDY_bm)
         {
-            ADC0_RESRDY();
-        }
-        if (SPI0.INTFLAGS & SPI_IF_bm)
-        {
-            SPI0_INT();
+            // Clear flag
+            ADC0.INTFLAGS = ADC_RESRDY_bm;
+            PORTA.OUTTGL = PIN6_bm;
+
+            // Read result
+            uint8_t mux = ADC_INPUTS[index];
+            uint16_t res = ADC0.RES;
+
+            // Select next input
+            index += 1;
+            if (index >= sizeof(ADC_INPUTS))
+                index = 0;
+
+            // Start conversion
+            ADC0.COMMAND = ADC_STCONV_bm;
+
+            // Send input index
+            SPI0.DATA = mux;
+            while (!(SPI0.INTFLAGS & SPI_IF_bm))
+                ;
+            SPI0.INTFLAGS = SPI_IF_bm;
+
+            // Send low byte
+            SPI0.DATA = res;
+            while (!(SPI0.INTFLAGS & SPI_IF_bm))
+                ;
+            SPI0.INTFLAGS = SPI_IF_bm;
+
+            // Send high byte
+            SPI0.DATA = res >> 8;
+            while (!(SPI0.INTFLAGS & SPI_IF_bm))
+                ;
+            SPI0.INTFLAGS = SPI_IF_bm;
         }
     }
 }
