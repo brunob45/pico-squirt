@@ -34,7 +34,8 @@ ISR(RTC_PIT_vect)
     _millis += 1;
 }
 
-ISR(SPI0_INT_vect)
+// ISR(SPI0_INT_vect)
+static void SPI0_INT()
 {
     // Clear interrupt flag
     SPI0.INTFLAGS = SPI_IF_bm;
@@ -46,7 +47,8 @@ ISR(SPI0_INT_vect)
     SPI0.DATA = value;
 }
 
-ISR(ADC0_RESRDY_vect)
+// ISR(ADC0_RESRDY_vect)
+static void ADC0_RESRDY()
 {
     static uint8_t index = 0;
 
@@ -125,7 +127,7 @@ static void ADC0_init()
     ADC0.COMMAND = ADC_STCONV_bm;
 
     // Enable interrupt
-    ADC0.INTCTRL = ADC_RESRDY_bm;
+    // ADC0.INTCTRL = ADC_RESRDY_bm;
 }
 
 static void SPI0_init()
@@ -145,7 +147,7 @@ static void SPI0_init()
     SPI0.CTRLA = SPI_ENABLE_bm;
 
     // Enable interrupt
-    SPI0.INTCTRL = SPI_IE_bm;
+    // SPI0.INTCTRL = SPI_IE_bm;
 }
 
 int main(void)
@@ -169,6 +171,14 @@ int main(void)
         {
             last = now;
             PORTA.OUTTGL = PIN6_bm;
+        }
+        if (ADC0.INTFLAGS & ADC_RESRDY_bm)
+        {
+            ADC0_RESRDY();
+        }
+        if (SPI0.INTFLAGS & SPI_IF_bm)
+        {
+            SPI0_INT();
         }
     }
 }
