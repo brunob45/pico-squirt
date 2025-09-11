@@ -34,8 +34,47 @@ ISR(RTC_PIT_vect)
     _millis += 1;
 }
 
-// ISR(SPI0_INT_vect)
+ISR(SPI0_INT_vect)
 // static void SPI0_INT()
+{
+    static uint8_t step = 0;
+    static uint16_t res;
+
+    SPI0.INTFLAGS = SPI_IF_bm;
+
+    switch (step)
+    {
+    case 0:
+        ADC0.MUXPOS = SPI0.DATA;
+        if (ADC0.MUXPOS > 0)
+        {
+            PORTA.OUTSET = PIN6_bm;
+            ADC0.COMMAND = ADC_STCONV_bm;
+            step += 1;
+        }
+        SPI0.DATA = 0;
+        break;
+    case 1:
+        if (ADC0.INTFLAGS & ADC_RESRDY_bm)
+        {
+            PORTA.OUTCLR = PIN6_bm;
+            ADC0.INTFLAGS = ADC_RESRDY_bm;
+            res = ADC0.RES;
+            SPI0.DATA = res;
+            step += 1;
+        }
+        else
+        {
+            SPI0.DATA = 0;
+        }
+        break;
+    case 2:
+        SPI0.DATA = res >> 8;
+        step = 0;
+        break;
+    }
+    // SPI0.DATA = step;
+}
 // {
 //     // Clear interrupt flag
 //     SPI0.INTFLAGS = SPI_IF_bm;
@@ -115,16 +154,16 @@ static void ADC0_init()
     ADC0.CTRLC = ADC_PRESC_DIV24_gc; // 24 MHz / 24 = 1 MHz => 1 us (0.5 > x > 8us)
 
     // Select the positive ADC input by writing to the MUXPOS bit field in the ADCn.MUXPOS register.
-    ADC0.MUXPOS = ADC_MUXPOS_AIN1_gc;
+    // ADC0.MUXPOS = ADC_MUXPOS_AIN1_gc;
 
     // Enable the ADC by writing a ‘1’ to the ADC Enable (ENABLE) bit in the ADCn.CTRLA register.
-    ADC0.CTRLA |= (1 << ADC_ENABLE_bp);
+    ADC0.CTRLA = ADC_ENABLE_bm;
 
     // Wait until ADC is ready (>6us)
     _delay_us(100);
 
     // Start conversion
-    ADC0.COMMAND = ADC_STCONV_bm;
+    // ADC0.COMMAND = ADC_STCONV_bm;
 
     // Enable interrupt
     // ADC0.INTCTRL = ADC_RESRDY_bm;
@@ -133,10 +172,10 @@ static void ADC0_init()
 static void SPI0_init()
 {
     // PORTMUX = ALT5
-    // PC0 => MOSI
-    // PC1 => MISO
-    // PC2 => SCK
-    // PC3 => CS
+    // PC0 => MOSI => GP3
+    // PC1 => MISO => GP4 (SDA)
+    // PC2 => SCK (SDA)  => GP2
+    // PC3 => CS (SCL)   => GP5 (SCL)
     PORTMUX.SPIROUTEA = PORTMUX_SPI0_ALT5_gc;
 
     // Set MISO (PC1) as output, others as input
@@ -147,7 +186,7 @@ static void SPI0_init()
     SPI0.CTRLA = SPI_ENABLE_bm;
 
     // Enable interrupt
-    // SPI0.INTCTRL = SPI_IE_bm;
+    SPI0.INTCTRL = SPI_IE_bm;
 }
 
 int main(void)
@@ -157,57 +196,54 @@ int main(void)
     CLK_init();
     ADC0_init();
     SPI0_init();
-    wdt_enable(WDTO_250MS);
+    // wdt_enable(WDTO_250MS);
 
     sei();
 
     uint32_t last = millis();
-    uint8_t index;
+    // uint8_t index;
 
     while (1)
     {
-        wdt_reset();
+        // wdt_reset();
         const uint32_t now = millis();
         if (now - last > 500)
         {
             last = now;
         }
-        if (ADC0.INTFLAGS & ADC_RESRDY_bm)
-        {
-            // Clear flag
-            ADC0.INTFLAGS = ADC_RESRDY_bm;
-            PORTA.OUTTGL = PIN6_bm;
+        // if (SPI0.INTFLAGS & SPI_IF_bm)
+        // {
+        //     PORTA.OUTTGL = PIN6_bm;
 
-            // Read result
-            uint8_t mux = ADC0.MUXPOS;
-            uint16_t res = ADC0.RES;
+        //     // Clear flag
+        //     SPI0.INTFLAGS = SPI_IF_bm;
 
-            // Select next input
-            index += 1;
-            if (index >= sizeof(ADC_INPUTS))
-                index = 0;
-            ADC0.MUXPOS = ADC_INPUTS[index];
+        //     // Set input
+        //     ADC0.MUXPOS = SPI0.DATA;
 
-            // Start conversion
-            ADC0.COMMAND = ADC_STCONV_bm;
+        //     // Start conversion
+        //     ADC0.COMMAND = ADC_STCONV_bm;
 
-            // Send input index
-            SPI0.DATA = mux;
-            while (!(SPI0.INTFLAGS & SPI_IF_bm))
-                ;
-            SPI0.INTFLAGS = SPI_IF_bm;
+        //     while (!(ADC0.INTFLAGS & ADC_RESRDY_bm))
+        //         ;
+        //     // Clear flag
+        //     ADC0.INTFLAGS = ADC_RESRDY_bm;
 
-            // Send low byte
-            SPI0.DATA = res;
-            while (!(SPI0.INTFLAGS & SPI_IF_bm))
-                ;
-            SPI0.INTFLAGS = SPI_IF_bm;
+        //     // Send low byte
+        //     SPI0.DATA = ADC0.RESL;
+        //     while (!(SPI0.INTFLAGS & SPI_IF_bm))
+        //         ;
+        //     SPI0.INTFLAGS = SPI_IF_bm;
 
-            // Send high byte
-            SPI0.DATA = res >> 8;
-            while (!(SPI0.INTFLAGS & SPI_IF_bm))
-                ;
-            SPI0.INTFLAGS = SPI_IF_bm;
-        }
+        //     // Send high byte
+        //     SPI0.DATA = ADC0.RESH;
+        //     while (!(SPI0.INTFLAGS & SPI_IF_bm))
+        //         ;
+        //     SPI0.INTFLAGS = SPI_IF_bm;
+        //     SPI0.DATA = 0;
+
+        //     while (!(PORTC.IN & PIN3_bm))
+        //         ;
+        // }
     }
 }

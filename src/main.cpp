@@ -44,7 +44,11 @@ int main()
 
     auto last_trx = get_absolute_time();
 
-    uint8_t cpt = 0, res;
+    uint8_t cpt[10], res[10];
+    for (int i = 0; i < sizeof(cpt); i++)
+    {
+        cpt[i] = 0;
+    }
 
     adc_init();
     adc_select_input(ADC_TEMPERATURE_CHANNEL_NUM);
@@ -60,9 +64,11 @@ int main()
             float volt = 3.3f * adc_value / 4095;
             float temperature = 27 - (volt - 0.706f) / 0.001721f;
             last_trx = get_absolute_time();
-            spi_write_read_blocking(spi0, &cpt, &res, 1);
-            printf("%0.2f %0.2f\n", temperature, res*0.25f);
-            cpt += 1;
+            cpt[0] = 1;
+            spi_write_read_blocking(spi0, cpt, res, sizeof(cpt));
+            uint16_t adc_res = res[8] + 256*res[9];
+            printf("%d\n", adc_res);
+            // printf("%0.2f %0.2f\n", temperature, res*0.25f);
         }
     }
 }
