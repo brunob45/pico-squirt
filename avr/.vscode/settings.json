@@ -7,15 +7,15 @@
             },
             {
                 "name": "Erase",
-                "command": "pymcuprog erase -m flash -t uart -u COM4 -d avr16dd28"
+                "command": "pymcuprog erase -m flash -t uart -u /dev/ttyACM0 -d avr16dd28"
             },
             {
                 "name": "Write",
-                "command": "pymcuprog write -t uart -u COM4 -d avr16dd28 -f main.hex"
+                "command": "pymcuprog write -t uart -u /dev/ttyACM0 -d avr16dd28 -f main.hex"
             },
             {
                 "name": "Ping",
-                "command": "pymcuprog ping -t uart -u COM4 -d avr16dd28"
+                "command": "pymcuprog ping -t uart -u /dev/ttyACM0 -d avr16dd28"
             }
         ],
         "defaultColor": "white",
