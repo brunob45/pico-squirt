@@ -49,7 +49,7 @@ ISR(ADC0_RESRDY_vect)
 
     adc_res[0] = ADC0.MUXPOS;
     adc_res[1] = res;
-    adc_res[2] = res>>8;
+    adc_res[2] = res >> 8;
     adc_idx = 0;
 }
 
@@ -145,6 +145,10 @@ int main(void)
         {
             last = now;
             PORTA.OUTTGL = PIN6_bm;
+        }
+        if (PORTC.IN & PIN3_bm)
+        {
+            adc_idx = __UINT8_MAX__;
         }
     }
 }

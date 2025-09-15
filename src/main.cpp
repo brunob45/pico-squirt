@@ -14,47 +14,59 @@
 
 void spi_update()
 {
-    uint8_t spi_step, spi_data, adc_resl, adc_resh;
+    static uint8_t spi_step = 0, spi_data, adc_resl, adc_resh;
+    static absolute_time_t last_time;
     uint16_t adc_res;
 
     spi_data = 1;
-    // spi_write_blocking(spi0, &spi_data, 1);
-    spi_get_hw(spi0)->dr = 1;
-    while (!spi_is_readable(spi0))
-        ;
-    (void)spi_get_hw(spi0)->dr;
-    do
+    switch (spi_step)
     {
-        // spi_read_blocking(spi0, 0, &spi_data, 1);
-        spi_get_hw(spi0)->dr = 0;
-        while (!spi_is_readable(spi0))
-            ;
+    case 0: // Send channel
+        gpio_put(5, 0);
         spi_data = spi_get_hw(spi0)->dr;
-    } while (spi_data == 0);
+        sleep_us(5);
+        spi_get_hw(spi0)->dr = 1;
+        spi_step += 1;
+        last_time = get_absolute_time();
+        break;
+    case 1: // Receive ready flag
+        if (spi_is_readable(spi0))
+        {
+            spi_data = spi_get_hw(spi0)->dr;
+            sleep_us(5);
+            spi_get_hw(spi0)->dr = 0;
+            if (spi_data > 0)
+                spi_step += 1;
+        }
+        break;
+    case 2: // Receive LSB
+        if (spi_is_readable(spi0))
+        {
+            adc_resl = spi_get_hw(spi0)->dr;
+            sleep_us(5);
+            spi_get_hw(spi0)->dr = 0;
+            if (spi_data > 0)
+                spi_step += 1;
+        }
+        break;
+    case 3: // Receive MSB and print
+        if (spi_is_readable(spi0))
+        {
+            adc_resh = spi_get_hw(spi0)->dr;
+            sleep_us(5);
+            gpio_put(5, 1);
+            spi_step += 1;
 
-    // spi_read_blocking(spi0, 0, &adc_resl, 1);
-    spi_get_hw(spi0)->dr = 0;
-    while (!spi_is_readable(spi0))
-        ;
-    adc_resl = spi_get_hw(spi0)->dr;
-
-    // spi_read_blocking(spi0, 0, &adc_resh, 1);
-    spi_get_hw(spi0)->dr = 0;
-    while (!spi_is_readable(spi0))
-        ;
-    adc_resh = spi_get_hw(spi0)->dr;
-
-    adc_res = adc_resl + 256 * adc_resh;
-    printf("%d %d\n", spi_data, adc_res);
-
-    // spi_write_read_blocking(spi0, out, in, sizeof(out));
-    // for(int i = 0; i < sizeof(in); i++)
-    //     printf("%x ", in[i]);
-    // printf("\n");
-    // uint16_t adc_res = res[8] + 256*res[9];
-    // printf("%d\n", adc_res);
-    // printf("%0.2f %0.2f\n", temperature, res*0.25f);
-    // printf("%d %d/n", 1, adc_res);
+            adc_res = adc_resl + 256 * adc_resh;
+            printf("%d %d\n", spi_data, adc_res);
+        }
+        break;
+    case 4: // Wait 1 second
+        if (get_absolute_time() - last_time > 1000000)
+        {
+            spi_step = 0;
+        }
+    }
 }
 
 int main()
@@ -86,10 +98,10 @@ int main()
     gpio_set_function(2, GPIO_FUNC_SPI);
     gpio_set_function(3, GPIO_FUNC_SPI);
     gpio_set_function(4, GPIO_FUNC_SPI);
-    gpio_set_function(5, GPIO_FUNC_SPI);
-    // gpio_init(5);
-    // gpio_set_dir(5, true);
-    // gpio_put(5, false);
+    // gpio_set_function(5, GPIO_FUNC_SPI);
+    gpio_init(5);
+    gpio_set_dir(5, 1);
+    gpio_put(5, 1);
 
     auto last_trx = get_absolute_time();
 
@@ -107,6 +119,7 @@ int main()
     {
         watchdog_update();
         avr_update();
+        spi_update();
 
         if (get_absolute_time() - last_trx > 1'000'000) // 1000 ms
         {
@@ -114,8 +127,6 @@ int main()
             float volt = 3.3f * adc_value / 4095;
             float temperature = 27 - (volt - 0.706f) / 0.001721f;
             last_trx = get_absolute_time();
-
-            spi_update();
         }
     }
 }

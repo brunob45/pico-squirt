@@ -54,7 +54,7 @@ Disassembly of section .text:
   9c:	18 e7       	ldi	r17, 0x78	; 120
   9e:	a0 e0       	ldi	r26, 0x00	; 0
   a0:	b8 e7       	ldi	r27, 0x78	; 120
-  a2:	e0 ea       	ldi	r30, 0xA0	; 160
+  a2:	ee ea       	ldi	r30, 0xAE	; 174
   a4:	f2 e0       	ldi	r31, 0x02	; 2
   a6:	02 c0       	rjmp	.+4      	; 0xac <__do_copy_data+0x10>
   a8:	05 90       	lpm	r0, Z+
@@ -77,7 +77,7 @@ Disassembly of section .text:
   be:	b2 07       	cpc	r27, r18
   c0:	e1 f7       	brne	.-8      	; 0xba <.do_clear_bss_loop>
   c2:	0e 94 ea 00 	call	0x1d4	; 0x1d4 <main>
-  c6:	0c 94 4e 01 	jmp	0x29c	; 0x29c <_exit>
+  c6:	0c 94 55 01 	jmp	0x2aa	; 0x2aa <_exit>
 
 000000ca <__bad_interrupt>:
   ca:	0c 94 00 00 	jmp	0	; 0x0 <__vectors>
@@ -241,35 +241,40 @@ Disassembly of section .text:
  24c:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
  250:	81 60       	ori	r24, 0x01	; 1
  252:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 256:	e0 e4       	ldi	r30, 0x40	; 64
- 258:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 25c:	8e 7f       	andi	r24, 0xFE	; 254
- 25e:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 262:	40 91 05 78 	lds	r20, 0x7805	; 0x807805 <_ZL7_millis>
- 266:	50 91 06 78 	lds	r21, 0x7806	; 0x807806 <_ZL7_millis+0x1>
- 26a:	60 91 07 78 	lds	r22, 0x7807	; 0x807807 <_ZL7_millis+0x2>
- 26e:	70 91 08 78 	lds	r23, 0x7808	; 0x807808 <_ZL7_millis+0x3>
- 272:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 276:	81 60       	ori	r24, 0x01	; 1
- 278:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
- 27c:	db 01       	movw	r26, r22
- 27e:	ca 01       	movw	r24, r20
- 280:	80 1b       	sub	r24, r16
- 282:	91 0b       	sbc	r25, r17
- 284:	a2 0b       	sbc	r26, r18
- 286:	b3 0b       	sbc	r27, r19
- 288:	85 3f       	cpi	r24, 0xF5	; 245
- 28a:	91 40       	sbci	r25, 0x01	; 1
- 28c:	a1 05       	cpc	r26, r1
- 28e:	b1 05       	cpc	r27, r1
- 290:	18 f3       	brcs	.-58     	; 0x258 <main+0x84>
- 292:	e0 93 07 04 	sts	0x0407, r30	; 0x800407 <__RODATA_PM_OFFSET__+0x7f8407>
- 296:	8a 01       	movw	r16, r20
- 298:	9b 01       	movw	r18, r22
- 29a:	de cf       	rjmp	.-68     	; 0x258 <main+0x84>
+ 256:	f0 e4       	ldi	r31, 0x40	; 64
+ 258:	ef ef       	ldi	r30, 0xFF	; 255
+ 25a:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 25e:	8e 7f       	andi	r24, 0xFE	; 254
+ 260:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 264:	40 91 05 78 	lds	r20, 0x7805	; 0x807805 <_ZL7_millis>
+ 268:	50 91 06 78 	lds	r21, 0x7806	; 0x807806 <_ZL7_millis+0x1>
+ 26c:	60 91 07 78 	lds	r22, 0x7807	; 0x807807 <_ZL7_millis+0x2>
+ 270:	70 91 08 78 	lds	r23, 0x7808	; 0x807808 <_ZL7_millis+0x3>
+ 274:	80 91 52 01 	lds	r24, 0x0152	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 278:	81 60       	ori	r24, 0x01	; 1
+ 27a:	80 93 52 01 	sts	0x0152, r24	; 0x800152 <__RODATA_PM_OFFSET__+0x7f8152>
+ 27e:	db 01       	movw	r26, r22
+ 280:	ca 01       	movw	r24, r20
+ 282:	80 1b       	sub	r24, r16
+ 284:	91 0b       	sbc	r25, r17
+ 286:	a2 0b       	sbc	r26, r18
+ 288:	b3 0b       	sbc	r27, r19
+ 28a:	85 3f       	cpi	r24, 0xF5	; 245
+ 28c:	91 40       	sbci	r25, 0x01	; 1
+ 28e:	a1 05       	cpc	r26, r1
+ 290:	b1 05       	cpc	r27, r1
+ 292:	20 f0       	brcs	.+8      	; 0x29c <main+0xc8>
+ 294:	f0 93 07 04 	sts	0x0407, r31	; 0x800407 <__RODATA_PM_OFFSET__+0x7f8407>
+ 298:	8a 01       	movw	r16, r20
+ 29a:	9b 01       	movw	r18, r22
+ 29c:	80 91 48 04 	lds	r24, 0x0448	; 0x800448 <__RODATA_PM_OFFSET__+0x7f8448>
+ 2a0:	83 ff       	sbrs	r24, 3
+ 2a2:	db cf       	rjmp	.-74     	; 0x25a <main+0x86>
+ 2a4:	e0 93 00 78 	sts	0x7800, r30	; 0x807800 <__DATA_REGION_ORIGIN__>
+ 2a8:	d8 cf       	rjmp	.-80     	; 0x25a <main+0x86>
 
-0000029c <_exit>:
- 29c:	f8 94       	cli
+000002aa <_exit>:
+ 2aa:	f8 94       	cli
 
-0000029e <__stop_program>:
- 29e:	ff cf       	rjmp	.-2      	; 0x29e <__stop_program>
+000002ac <__stop_program>:
+ 2ac:	ff cf       	rjmp	.-2      	; 0x2ac <__stop_program>
