@@ -18,8 +18,11 @@ void spi_update()
     uint16_t adc_res;
 
     spi_data = 1;
-    spi_write_blocking(spi0, &spi_data, 1);
-    // spi_get_hw(spi0)->dr = 1;
+    // spi_write_blocking(spi0, &spi_data, 1);
+    spi_get_hw(spi0)->dr = 1;
+    while (!spi_is_readable(spi0))
+        ;
+    (void)spi_get_hw(spi0)->dr;
     do
     {
         // spi_read_blocking(spi0, 0, &spi_data, 1);
