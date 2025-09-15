@@ -24,21 +24,27 @@ ISR(RTC_PIT_vect)
 
 ISR(SPI0_INT_vect)
 {
-    SPI0.INTFLAGS = SPI_IF_bm;
-    uint8_t spi_data = SPI0.DATA;
-    if ((spi_data > 0) && !(ADC0.COMMAND & ADC_STCONV_bm))
+    if (SPI0.INTFLAGS & SPI_RXCIF_bm)
     {
-        ADC0.MUXPOS = spi_data;
-        ADC0.COMMAND = ADC_STCONV_bm;
+        // Receive complete
+        uint8_t spi_data = SPI0.DATA;
+        if ((spi_data > 0) && !(ADC0.COMMAND & ADC_STCONV_bm))
+        {
+            ADC0.MUXPOS = spi_data;
+            ADC0.COMMAND = ADC_STCONV_bm;
+        }
     }
-
-    spi_data = 0;
-    if (adc_idx < sizeof(adc_res))
+    if (SPI0.INTFLAGS & SPI_DREIF_bm)
     {
-        spi_data = adc_res[adc_idx];
-        adc_idx += 1;
+        // Data register empty
+        uint8_t spi_data = 0;
+        if (adc_idx < sizeof(adc_res))
+        {
+            spi_data = adc_res[adc_idx];
+            adc_idx += 1;
+        }
+        SPI0.DATA = spi_data;
     }
-    SPI0.DATA = spi_data;
 }
 
 ISR(ADC0_RESRDY_vect)
@@ -117,11 +123,14 @@ static void SPI0_init()
     PORTC.DIRSET = PIN1_bm;                     // MISO
     PORTC.DIRCLR = PIN0_bm | PIN2_bm | PIN3_bm; // MOSI, SCK, SS
 
+    // Enable buffer mode
+    SPI0.CTRLB = SPI_BUFEN_bm | SPI_BUFWR_bm;
+
     // Enable the SPI by writing a ‘1’ to the ENABLE bit in SPIn.CTRLA
     SPI0.CTRLA = SPI_ENABLE_bm;
 
     // Enable interrupt
-    SPI0.INTCTRL = SPI_IE_bm;
+    SPI0.INTCTRL = SPI_RXCIE_bm | SPI_DREIE_bm;
 }
 
 int main(void)
