@@ -11,6 +11,7 @@
 #include <util/delay.h>
 
 static volatile uint32_t _millis;
+static volatile uint8_t adc_res[3], adc_idx = __UINT8_MAX__;
 
 ISR(RTC_PIT_vect)
 {
@@ -19,6 +20,37 @@ ISR(RTC_PIT_vect)
 
     // Increment millis counter
     _millis += 1;
+}
+
+ISR(SPI0_INT_vect)
+{
+    SPI0.INTFLAGS = SPI_IF_bm;
+    uint8_t spi_data = SPI0.DATA;
+    if ((spi_data > 0) && !(ADC0.COMMAND & ADC_STCONV_bm))
+    {
+        ADC0.MUXPOS = spi_data;
+        ADC0.COMMAND = ADC_STCONV_bm;
+    }
+
+    spi_data = 0;
+    if (adc_idx < sizeof(adc_res))
+    {
+        spi_data = adc_res[adc_idx];
+        adc_idx += 1;
+    }
+    SPI0.DATA = spi_data;
+}
+
+ISR(ADC0_RESRDY_vect)
+{
+    ADC0.INTFLAGS = ADC_RESRDY_bm;
+
+    const uint16_t res = ADC0.RES;
+
+    adc_res[0] = ADC0.MUXPOS;
+    adc_res[1] = res;
+    adc_res[2] = res>>8;
+    adc_idx = 0;
 }
 
 static void CLK_init()
@@ -69,7 +101,7 @@ static void ADC0_init()
     _delay_us(100);
 
     // Enable interrupt
-    // ADC0.INTCTRL = ADC_RESRDY_bm;
+    ADC0.INTCTRL = ADC_RESRDY_bm;
 }
 
 static void SPI0_init()
@@ -89,7 +121,7 @@ static void SPI0_init()
     SPI0.CTRLA = SPI_ENABLE_bm;
 
     // Enable interrupt
-    // SPI0.INTCTRL = SPI_IE_bm;
+    SPI0.INTCTRL = SPI_IE_bm;
 }
 
 int main(void)
@@ -104,7 +136,6 @@ int main(void)
     sei();
 
     uint32_t last = millis();
-    uint8_t adc_res[3], adc_idx = __UINT8_MAX__;
 
     while (1)
     {
@@ -114,38 +145,6 @@ int main(void)
         {
             last = now;
             PORTA.OUTTGL = PIN6_bm;
-        }
-        if (SPI0.INTFLAGS & SPI_IF_bm)
-        {
-            // Clear interrupt flag
-            SPI0.INTFLAGS = SPI_IF_bm;
-
-            // Read SPI
-            const uint8_t adc_mux = SPI0.DATA;
-            if (adc_mux > 0)
-            {
-                ADC0.MUXPOS = adc_mux;
-                ADC0.COMMAND = ADC_STCONV_bm;
-            }
-
-            // Write SPI
-            uint8_t spi_data = 0;
-            if (adc_idx < sizeof(adc_res))
-            {
-                spi_data = adc_res[adc_idx];
-                adc_idx += 1;
-            }
-            SPI0.DATA = spi_data;
-        }
-        if (ADC0.INTFLAGS & ADC_RESRDY_bm)
-        {
-            // Clear interrupt flag
-            ADC0.INTFLAGS = ADC_RESRDY_bm;
-
-            // Save result
-            adc_res[0] = ADC0.MUXPOS;
-            adc_res[1] = ADC0.RESL;
-            adc_res[2] = ADC0.RESH;
         }
     }
 }

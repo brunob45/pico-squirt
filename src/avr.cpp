@@ -47,7 +47,7 @@ void avr_update()
     }
     if (uart_is_readable(UART_ID))
     {
-        gpio_xor_mask(1 << 25);
+        // gpio_xor_mask(1 << 25);
         const auto ch = uart_getc(UART_ID);
         tud_cdc_write_char(ch); // send on USB
         tud_cdc_write_flush();
