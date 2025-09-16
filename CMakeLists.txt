@@ -42,6 +42,7 @@ add_executable(pico-squirt
     ${CMAKE_CURRENT_LIST_DIR}/src/flash.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/simulation.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/adc_conv.cpp
 )
 
 pico_set_program_name(pico-squirt "pico-squirt")
