@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>ESP32 Gauges + History</title>
+    <script src="https://cdn.jsdelivr.net/npm/@bernii/gauge.js/dist/gauge.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            justify-items: center;
+        }
+
+        #history {
+            max-width: 1000px;
+            margin: 2rem auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>ESP32 – 8 Gauges with History Plot</h2>
+    <div class="grid">
+        <canvas id="g0" width="180" height="180"></canvas>
+        <canvas id="g1" width="180" height="180"></canvas>
+        <canvas id="g2" width="180" height="180"></canvas>
+        <canvas id="g3" width="180" height="180"></canvas>
+        <canvas id="g4" width="180" height="180"></canvas>
+        <canvas id="g5" width="180" height="180"></canvas>
+        <canvas id="g6" width="180" height="180"></canvas>
+        <canvas id="g7" width="180" height="180"></canvas>
+    </div>
+
+    <div id="history">
+        <h3>History (Gauge 0)</h3>
+        <canvas id="chart" height="200"></canvas>
+    </div>
+
+    <script>
+        // ---------- Gauges ----------
+        const gaugeOpts = {
+            angle: -0.25, lineWidth: 0.2, radiusScale: 1,
+            pointer: { length: 0.6, strokeWidth: 0.035, color: '#000' },
+            strokeColor: '#E0E0E0', generateGradient: true
+        };
+        const gauges = [];
+        for (let i = 0; i < 8; i++) {
+            const g = new Gauge(document.getElementById('g' + i)).setOptions(gaugeOpts);
+            g.maxValue = 100; g.setMinValue(0); g.set(0);
+            gauges.push(g);
+        }
+
+        // ---------- History Chart ----------
+        const ctx = document.getElementById('chart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], datasets: [{
+                    label: 'Gauge 0',
+                    data: [],
+                    fill: false,
+                    borderColor: 'blue',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                animation: false,
+                scales: {
+                    x: { type: 'time', time: { unit: 'second', tooltipFormat: 'HH:mm:ss' } },
+                    y: { suggestedMin: 0, suggestedMax: 100 }
+                }
+            }
+        });
+
+        function addPoint(v) {
+            const now = new Date();
+            chart.data.labels.push(now);
+            chart.data.datasets[0].data.push(v);
+            // keep last 60 points
+            if (chart.data.labels.length > 60) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+            chart.update('none');
+        }
+
+        // ---------- WebSocket ----------
+        const socket = new WebSocket(`ws://${window.location.host}/ws`);
+        socket.onmessage = ev => {
+            try {
+                const data = JSON.parse(ev.data); // {v:[..]}
+                for (let i = 0; i < gauges.length; i++) {
+                    if (data.v && data.v[i] != undefined) gauges[i].set(data.v[i]);
+                }
+                if (data.v && data.v[0] != undefined) addPoint(data.v[0]);
+            } catch (e) { console.error(e); }
+        };
+    </script>
+</body>
+
+</html>
