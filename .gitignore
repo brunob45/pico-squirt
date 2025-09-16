@@ -1,1 +1,59 @@
-build
+# C++
+## Build artifacts
+*.o
+*.obj
+*.ko
+*.mod
+*.slo
+*.lo
+*.la
+*.lai
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+*.gch
+*.pch
+*.d
+
+## Visual Studio files
+.vs/
+*.suo
+*.user
+*.ilk
+*.aps
+*.bsc
+*.ncb
+*.pdb
+*.ipch
+*.log
+*.tlog
+*.lastbuildstate
+*.VC.db
+*.VC.opendb
+*.vcxproj.user
+*.vcxproj.filters
+*.sln.docstates
+
+## CMake build files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+# Makefile
+build/
+
+## Other IDE/Editor files
+*.swp
+*.bak
+*~
+*.sublime-workspace
+.idea/
+nbproject/
+
+# LibreOffice
+.~lock.*
+*.bak

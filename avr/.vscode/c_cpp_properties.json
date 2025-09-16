@@ -1,0 +1,35 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/lib/avr/include",
+                "${workspaceFolder}/lib/gcc/include/*"
+            ],
+            "defines": [
+                "__AVR_DEV_LIB_NAME__=avr16dd28"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        },
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "gcc/avr/include",
+                "${workspaceFolder}/lib/gcc/include/*"
+            ],
+            "defines": [
+                "__AVR_DEV_LIB_NAME__=avr16dd28"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "gcc-arm",
+            "compilerPath": ""
+        }
+    ],
+    "version": 4
+}

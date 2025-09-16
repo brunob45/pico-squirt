@@ -15,15 +15,15 @@ if(WIN32)
 else()
     set(USERHOME $ENV{HOME})
 endif()
-set(sdkVersion 2.1.1)
+set(sdkVersion 2.2.0)
 set(toolchainVersion 14_2_Rel1)
-set(picotoolVersion 2.1.1)
+set(picotoolVersion 2.2.0)
 set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
 if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-set(PICO_BOARD pico CACHE STRING "Board type")
+set(PICO_BOARD pico2 CACHE STRING "Board type")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
@@ -36,9 +36,11 @@ pico_sdk_init()
 # Add executable. Default name is the project name, version 0.1
 
 add_executable(pico-squirt
-    ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/avr.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/canbus.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/decoder.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/flash.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/simulation.cpp
 )
 
@@ -73,6 +75,8 @@ target_link_libraries(pico-squirt
     hardware_interp
     hardware_timer
     hardware_watchdog
+    hardware_spi
+    hardware_adc
     can2040
     libdivide
 )
@@ -80,4 +84,5 @@ target_link_libraries(pico-squirt
 pico_add_extra_outputs(pico-squirt)
 
 # Select a 200Mhz clock - or use PICO_USE_FASTEST_SUPPORTED_CLOCK=1
-add_compile_definitions(SYS_CLK_MHZ=200)
+# add_compile_definitions(SYS_CLK_MHZ=200)
+add_compile_definitions(PICO_USE_FASTEST_SUPPORTED_CLOCK=1)

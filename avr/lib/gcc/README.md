@@ -1,0 +1,1 @@
+http://packs.download.atmel.com/Atmel.AVR-Dx_DFP.2.7.321.atpack
