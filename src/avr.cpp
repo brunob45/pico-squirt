@@ -63,7 +63,7 @@ void avr_update()
     case 0: // Send channel
         // Clear buffer
         while (spi_is_readable(SPI_ID))
-            (void)spi_get_hw(SPI_ID)->dr;
+            (void)spi_get_hw(SPI_ID)->dr; // Should never happen
 
         // Assert CS line
         gpio_put(SPI_CS_PIN, 0);
