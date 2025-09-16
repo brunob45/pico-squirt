@@ -17,6 +17,7 @@ int main()
         // Whatever action you may take if a watchdog caused a reboot
     }
 
+    // Init onboard LED
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, 1);
     gpio_put(PICO_DEFAULT_LED_PIN, 1);
@@ -29,12 +30,11 @@ int main()
     watchdog_update();
 
     avr_init();
-
-    auto last_trx = get_absolute_time();
-
     adc_init();
     adc_set_temp_sensor_enabled(true);
     adc_select_input(ADC_TEMPERATURE_CHANNEL_NUM);
+
+    auto last_trx = get_absolute_time();
 
     while (true)
     {
