@@ -43,12 +43,12 @@ void avr_init()
 void avr_update(GlobalState *gs)
 {
     const adc_update_fn adc_update[] = {
-        mat_update,
-        clt_update,
-        map_update,
-        tps_update,
-        ego_update,
-        tps_update,
+        map_update, // ADC0
+        mat_update, // ADC1
+        clt_update, // ADC2
+        tps_update, // ADC3
+        bat_update, // ADC4
+        ego_update, // ADC5
     };
     const uint8_t adc_mux[] = {1, 2, 3, 4, 5, 6, 7};
     static uint8_t adc_idx = 0, spi_step = 0, adc_resl;

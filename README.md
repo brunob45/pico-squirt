@@ -6,12 +6,13 @@ Sandbox project for Raspberry Pi Pico
 ## Inputs
 - [x] Decoder
 - [x] ADC
-- [ ] Vbat
-- [ ] MAT
+- [x] Vbat
+- [x] MAT
 - [ ] CLT
-- [ ] TPS
-- [ ] MAP (average over cycle)
-- [ ] AFR
+- [x] TPS
+- [x] MAP
+    - [ ] average over cycle
+- [x] AFR
 - [ ] OilP
 ## Outputs
 - [x] INJ triggers
