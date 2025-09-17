@@ -14,6 +14,8 @@ struct GlobalState
     int16_t battery_voltage;      // 0.01 V
     int16_t pico_temperature;     // 0.1 °C
     uint16_t engine_speed;        // 1 rpm
+    uint32_t loop_time_max;       // 1 us
+    uint32_t loop_time_avg;       // 1 us
 };
 
 #endif // __GLOBAL_STATE_H__

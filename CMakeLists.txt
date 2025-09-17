@@ -73,6 +73,7 @@ add_subdirectory(lib/libdivide)
 # Add any user requested libraries
 target_link_libraries(pico-squirt 
     # hardware_pio
+    pico_multicore
     hardware_interp
     hardware_timer
     hardware_watchdog

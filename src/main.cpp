@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
+
+#include "pico/multicore.h"
+
 #include "hardware/watchdog.h"
 #include "hardware/gpio.h"
 #include "hardware/adc.h"
@@ -8,9 +11,32 @@
 #include "decoder.h"
 #include "global_state.h"
 
+static GlobalState gs;
+
+void core1_entry()
+{
+    auto last_trx = get_absolute_time();
+    while (true)
+    {
+        if (get_absolute_time() - last_trx > 1'000'000) // 1000 ms
+        {
+            last_trx = get_absolute_time();
+
+            auto adc_value = adc_read();
+            float volt = 3.3f * adc_value / 4095;
+            float temperature = 27 - (volt - 0.706f) / 0.001721f;
+            gs.pico_temperature = (int16_t)(temperature * 10);
+
+            // Print ADC values
+            for (int i = 0; i < 7; i++)
+                printf("%d %d, ", i, gs.adc[i]);
+            printf("%0.2f\n", temperature);
+        }
+    }
+}
+
 int main()
 {
-    GlobalState gs;
     Decoder dec;
 
     stdio_init_all();
@@ -41,7 +67,9 @@ int main()
 
     dec.enable(0);
 
-    auto last_trx = get_absolute_time();
+    multicore_launch_core1(core1_entry);
+
+    uint32_t last_loop_time = time_us_32();
 
     while (true)
     {
@@ -49,19 +77,11 @@ int main()
         dec.update(&gs);
         avr_update(&gs);
 
-        if (get_absolute_time() - last_trx > 1'000'000) // 1000 ms
-        {
-            last_trx = get_absolute_time();
-
-            auto adc_value = adc_read();
-            float volt = 3.3f * adc_value / 4095;
-            float temperature = 27 - (volt - 0.706f) / 0.001721f;
-            gs.pico_temperature = (int16_t)(temperature * 10);
-
-            // Print ADC values
-            for (int i = 0; i < 7; i++)
-                printf("%d %d, ", i, gs.adc[i]);
-            printf("%0.2f\n", temperature);
-        }
+        // Compute loop time
+        const uint32_t loop_time = time_us_32() - last_loop_time;
+        last_loop_time = time_us_32();
+        gs.loop_time_avg += (loop_time - gs.loop_time_avg) / 10;
+        if (loop_time > gs.loop_time_max)
+            gs.loop_time_max = loop_time;
     }
 }
