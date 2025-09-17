@@ -25,7 +25,7 @@ void Decoder::enable(uint pin)
     gpio_set_irq_enabled_with_callback(pin, GPIO_IRQ_EDGE_RISE, true, new_ts_callback);
 }
 
-bool Decoder::update()
+bool Decoder::update(GlobalState* gs)
 {
     absolute_time_t ts_now;
     if (queue_try_remove(&queue, &ts_now))
@@ -87,19 +87,27 @@ bool Decoder::update()
 
         default:;
         }
-        update_output_alarm(next_timeout_us, &sync_step); // schedule timeout
         delta_prev = delta;
         ts_prev = ts_now;
+        next_timeout = ts_now + next_timeout_us;
 
         // update timing variables
         full_cycle_us = delta_prev * N_PULSES;
         fast_d = libdivide::divider<uint>(full_cycle_us);
+
+        // Update global state
+        gs->engine_speed = get_rpm();
         return true;
     }
-    else
+
+    if ((get_absolute_time() > next_timeout) && (sync_step != 0))
     {
-        return false;
+        // Lost sync
+        sync_step = 0;
+        gs->engine_speed = 0;
     }
+
+    return false;
 }
 
 bool Decoder::compute_target(Trigger *trig, uint end_deg, uint pw)

@@ -10,10 +10,11 @@
 #include "libdivide.h"
 
 #include "trigger.h"
+#include "global_state.h"
 
 struct Decoder
 {
-    absolute_time_t ts_prev;
+    absolute_time_t ts_prev, next_timeout;
     uint delta_prev;
     uint sync_step = 0;
     uint sync_count = 0;
@@ -28,7 +29,7 @@ struct Decoder
     const uint N_MISSING = 1;
 
     void enable(uint pin);
-    bool update();
+    bool update(GlobalState* gs);
     bool compute_target(Trigger *target, uint end_deg, uint pw);
 
 private:
@@ -44,22 +45,6 @@ private:
             }
         }
         return result;
-    }
-    static int64_t sync_loss_cb(alarm_id_t, void *data)
-    {
-        uint *step = (uint *)data;
-        if (step)
-            *step = 0;
-        return 0;
-    }
-    void update_output_alarm(uint32_t us, uint *step)
-    {
-        const alarm_id_t id = timeout_alarm_id;
-        if (id > 0)
-        {
-            cancel_alarm(id);
-        }
-        timeout_alarm_id = add_alarm_in_us(us, sync_loss_cb, step, true);
     }
     uint get_rpm()
     {

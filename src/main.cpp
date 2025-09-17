@@ -5,11 +5,13 @@
 #include "hardware/adc.h"
 
 #include "avr.h"
+#include "decoder.h"
 #include "global_state.h"
 
 int main()
 {
     GlobalState gs;
+    Decoder dec;
 
     stdio_init_all();
 
@@ -37,11 +39,14 @@ int main()
     adc_set_temp_sensor_enabled(true);
     adc_select_input(ADC_TEMPERATURE_CHANNEL_NUM);
 
+    dec.enable(0);
+
     auto last_trx = get_absolute_time();
 
     while (true)
     {
         watchdog_update();
+        dec.update(&gs);
         avr_update(&gs);
 
         if (get_absolute_time() - last_trx > 1'000'000) // 1000 ms

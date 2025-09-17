@@ -13,6 +13,7 @@ struct GlobalState
     int16_t air_fuel_ratio;       // 0.01:1
     int16_t battery_voltage;      // 0.01 V
     int16_t pico_temperature;     // 0.1 °C
+    uint16_t engine_speed;        // 1 rpm
 };
 
 #endif // __GLOBAL_STATE_H__
