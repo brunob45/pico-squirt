@@ -22,15 +22,10 @@ void core1_entry()
         {
             last_trx = get_absolute_time();
 
-            auto adc_value = adc_read();
-            float volt = 3.3f * adc_value / 4095;
-            float temperature = 27 - (volt - 0.706f) / 0.001721f;
-            gs.pico_temperature = (int16_t)(temperature * 10);
-
             // Print ADC values
             for (int i = 0; i < 7; i++)
                 printf("%d %d, ", i, gs.adc[i]);
-            printf("%0.2f\n", temperature);
+            printf("%0.2f\n", gs.pico_temperature * 0.01f);
         }
     }
 }
@@ -60,10 +55,13 @@ int main()
     // You need to call this function at least more often than the 100ms in the enable call to prevent a reboot
     watchdog_update();
 
-    avr_init();
+    // Initialize the ADC
     adc_init();
     adc_set_temp_sensor_enabled(true);
     adc_select_input(ADC_TEMPERATURE_CHANNEL_NUM);
+    hw_set_bits(&adc_hw->cs, ADC_CS_START_MANY_BITS); // Start conversions
+
+    avr_init(); // SPI & UPDI
 
     dec.enable(0);
 
@@ -76,6 +74,14 @@ int main()
         watchdog_update();
         dec.update(&gs);
         avr_update(&gs);
+
+        if (adc_hw->cs & ADC_CS_READY_BITS)
+        {
+            auto adc_value = adc_hw->result;
+            float volt = 3.3f * adc_value / 4095;
+            float temperature = 27 - (volt - 0.706f) / 0.001721f;
+            gs.pico_temperature = (int16_t)(temperature * 10);
+        }
 
         // Compute loop time
         const uint32_t loop_time = time_us_32() - last_loop_time;
