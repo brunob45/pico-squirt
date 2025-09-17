@@ -18,6 +18,16 @@
 #define SPI_MISO_PIN 4
 #define SPI_CS_PIN 5
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
+static uint32_t last_loop_time;
+
+struct adc_mux_step
+{
+    uint8_t index;
+    adc_update_fn update_fn;
+};
+
 void avr_init()
 {
     // Init UART
@@ -38,22 +48,25 @@ void avr_init()
     gpio_init(SPI_CS_PIN);
     gpio_set_dir(SPI_CS_PIN, 1);
     gpio_put(SPI_CS_PIN, 1);
+
+    last_loop_time = time_us_32();
 }
 
 void avr_update(GlobalState *gs)
 {
-    const adc_update_fn adc_update[] = {
-        map_update,  // ADC0
-        mat_update,  // ADC1
-        clt_update,  // ADC2
-        tps_update,  // ADC3
-        bat_update,  // ADC4
-        ego_update,  // ADC5
-        adc6_update, // ADC6
+    const adc_mux_step adc_mux[] = {
+        {1, map_update},  // ADC0
+        {2, mat_update},  // ADC1
+        {3, clt_update},  // ADC2
+        {4, tps_update},  // ADC3
+        {1, map_update},  // ADC0 - repeated for faster update rate
+        {5, bat_update},  // ADC4
+        {6, ego_update},  // ADC5
+        {7, adc6_update}, // ADC6
     };
-    const uint8_t adc_mux[] = {1, 2, 3, 4, 5, 6, 7};
     static uint8_t adc_idx = 0, spi_step = 0, adc_resl;
 
+    // Update UPDI
     const auto len = tud_cdc_available();
     if (len && uart_is_writable(UART_ID))
     {
@@ -68,6 +81,7 @@ void avr_update(GlobalState *gs)
         tud_cdc_write_flush();
     }
 
+    // Update SPI
     switch (spi_step)
     {
     case 0: // Send channel
@@ -79,7 +93,7 @@ void avr_update(GlobalState *gs)
         gpio_put(SPI_CS_PIN, 0);
 
         // Send ADC MUX index
-        spi_get_hw(SPI_ID)->dr = adc_mux[adc_idx];
+        spi_get_hw(SPI_ID)->dr = adc_mux[adc_idx].index;
 
         spi_step += 1;
         break;
@@ -90,7 +104,7 @@ void avr_update(GlobalState *gs)
             const uint8_t spi_data = spi_get_hw(SPI_ID)->dr;
             spi_get_hw(SPI_ID)->dr = 0;
 
-            if (spi_data == adc_mux[adc_idx])
+            if (spi_data == adc_mux[adc_idx].index)
             {
                 spi_step += 1;
                 // Prepare a second byte
@@ -120,12 +134,16 @@ void avr_update(GlobalState *gs)
             // Compute ADC value
             const uint16_t adc_res = adc_resl + 256U * adc_resh;
             gs->adc[adc_idx] = adc_res;
-            adc_update[adc_idx](gs, adc_res);
+            adc_mux[adc_idx].update_fn(gs, adc_res);
 
             // Increment index for next transfer
             adc_idx += 1;
-            if (adc_idx >= sizeof(adc_mux))
+            if (adc_idx >= ARRAY_SIZE(adc_mux))
+            {
                 adc_idx = 0;
+                gs->avr_loop_time = time_us_32() - last_loop_time;
+                last_loop_time = time_us_32();
+            }
 
             spi_step = 0;
         }

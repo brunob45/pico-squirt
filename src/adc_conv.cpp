@@ -72,5 +72,4 @@ void tps_update(GlobalState* gs, uint16_t adc_value)
 
 void adc6_update(GlobalState* gs, uint16_t adc_value)
 {
-
 }

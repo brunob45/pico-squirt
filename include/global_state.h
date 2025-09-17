@@ -16,6 +16,7 @@ struct GlobalState
     uint16_t engine_speed;        // 1 rpm
     uint32_t loop_time_max;       // 1 us
     uint32_t loop_time_avg;       // 1 us
+    uint32_t avr_loop_time;       // 1 us
 };
 
 #endif // __GLOBAL_STATE_H__
