@@ -17,6 +17,7 @@ struct GlobalState
     uint32_t loop_time_max;       // 1 us
     uint32_t loop_time_avg;       // 1 us
     uint32_t avr_loop_time;       // 1 us
+    uint64_t rev_count;           // 1 rev
 };
 
 #endif // __GLOBAL_STATE_H__

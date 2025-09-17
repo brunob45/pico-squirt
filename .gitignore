@@ -57,3 +57,6 @@ nbproject/
 # LibreOffice
 .~lock.*
 *.bak
+
+# DrawIO
+.$*.drawio.bkp

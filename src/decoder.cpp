@@ -25,7 +25,7 @@ void Decoder::enable(uint pin)
     gpio_set_irq_enabled_with_callback(pin, GPIO_IRQ_EDGE_RISE, true, new_ts_callback);
 }
 
-bool Decoder::update(GlobalState* gs)
+bool Decoder::update(GlobalState *gs)
 {
     absolute_time_t ts_now;
     if (queue_try_remove(&queue, &ts_now))
@@ -61,7 +61,7 @@ bool Decoder::update(GlobalState* gs)
             if (delta > (delta_prev * 7 / 4)) // expect at least 175ms
             {
                 sync_step = 4;
-                sync_count = 0;
+                sync_count = 0;                  // start new engine cycle
                 delta = (delta + 1) / 2;         // longer delta detected, divide by 2
                 next_timeout_us = delta * 5 / 4; // normal pulse @ 125ms
             }
@@ -73,10 +73,11 @@ bool Decoder::update(GlobalState* gs)
             break;
 
         case 4: // full sync
-            sync_count = (sync_count < (N_PULSES - N_MISSING - 1)) ? sync_count + 1 : 0;
-            if (sync_count == (N_PULSES - N_MISSING - 1))
+            sync_count += 1;
+            if (sync_count >= (N_PULSES - N_MISSING - 1)) // 24 - 1 - 1 = 22
             {
                 sync_step = 3;                    // challenge longer pulse
+                gs->rev_count += 2;               // Increment revolution count
                 next_timeout_us = delta * 10 / 4; // longer pulse @ 250ms
             }
             else
