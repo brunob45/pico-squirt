@@ -43,12 +43,13 @@ void avr_init()
 void avr_update(GlobalState *gs)
 {
     const adc_update_fn adc_update[] = {
-        map_update, // ADC0
-        mat_update, // ADC1
-        clt_update, // ADC2
-        tps_update, // ADC3
-        bat_update, // ADC4
-        ego_update, // ADC5
+        map_update,  // ADC0
+        mat_update,  // ADC1
+        clt_update,  // ADC2
+        tps_update,  // ADC3
+        bat_update,  // ADC4
+        ego_update,  // ADC5
+        adc6_update, // ADC6
     };
     const uint8_t adc_mux[] = {1, 2, 3, 4, 5, 6, 7};
     static uint8_t adc_idx = 0, spi_step = 0, adc_resl;
@@ -117,7 +118,7 @@ void avr_update(GlobalState *gs)
             gpio_put(SPI_CS_PIN, 1);
 
             // Compute ADC value
-            const uint16_t adc_res = adc_resl + 256 * adc_resh;
+            const uint16_t adc_res = adc_resl + 256U * adc_resh;
             gs->adc[adc_idx] = adc_res;
             adc_update[adc_idx](gs, adc_res);
 

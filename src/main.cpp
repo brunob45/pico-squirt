@@ -23,9 +23,14 @@ void core1_entry()
             last_trx = get_absolute_time();
 
             // Print ADC values
-            for (int i = 0; i < 7; i++)
-                printf("%d %d, ", i, gs.adc[i]);
-            printf("%0.2f\n", gs.pico_temperature * 0.01f);
+            printf("ADC0: %0.2f, %0.1f, ", 5.0f / 0x3fff * gs.adc[0], gs.manifold_pressure * 0.1f);
+            printf("ADC1: %0.2f, %0.1f, ", 5.0f / 0x3fff * gs.adc[1], gs.manifold_temperature * 0.1f);
+            printf("ADC2: %0.2f, %0.1f, ", 5.0f / 0x3fff * gs.adc[2], gs.coolant_temperature * 0.1f);
+            printf("ADC3: %0.2f, %0.1f, ", 5.0f / 0x3fff * gs.adc[3], gs.throttle_position * 0.1f);
+            printf("ADC4: %0.2f, %0.1f, ", 5.0f / 0x3fff * gs.adc[4], gs.battery_voltage * 0.01f);
+            printf("ADC5: %0.2f, %0.1f, ", 5.0f / 0x3fff * gs.adc[5], gs.air_fuel_ratio * 0.01f);
+            printf("ADC6: %0.2f, %0.1f, ", 5.0f / 0x3fff * gs.adc[6], 0.0f);
+            printf("%0.1f°C, %d, %d\n", gs.pico_temperature * 0.1f, gs.loop_time_avg, gs.loop_time_max);
         }
     }
 }
@@ -59,7 +64,7 @@ int main()
     adc_init();
     adc_set_temp_sensor_enabled(true);
     adc_select_input(ADC_TEMPERATURE_CHANNEL_NUM);
-    hw_set_bits(&adc_hw->cs, ADC_CS_START_MANY_BITS); // Start conversions
+    hw_set_bits(&adc_hw->cs, ADC_CS_START_ONCE_BITS); // Start conversions
 
     avr_init(); // SPI & UPDI
 
@@ -68,6 +73,7 @@ int main()
     multicore_launch_core1(core1_entry);
 
     uint32_t last_loop_time = time_us_32();
+    gs.loop_time_avg = 0;
 
     while (true)
     {
@@ -81,12 +87,13 @@ int main()
             float volt = 3.3f * adc_value / 4095;
             float temperature = 27 - (volt - 0.706f) / 0.001721f;
             gs.pico_temperature = (int16_t)(temperature * 10);
+            hw_set_bits(&adc_hw->cs, ADC_CS_START_ONCE_BITS);
         }
 
         // Compute loop time
         const uint32_t loop_time = time_us_32() - last_loop_time;
         last_loop_time = time_us_32();
-        gs.loop_time_avg += (loop_time - gs.loop_time_avg) / 10;
+        gs.loop_time_avg = (loop_time + gs.loop_time_avg * 99) / 100;
         if (loop_time > gs.loop_time_max)
             gs.loop_time_max = loop_time;
     }
