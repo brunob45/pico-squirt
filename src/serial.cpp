@@ -11,7 +11,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdint>
-#include <vector>
+// #include <vector>
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"
@@ -40,6 +40,47 @@ enum : uint8_t
     FLAG_CAN_DATA = 0x06
 };
 // Error codes are >= 0x80 per spec (see PDF). We'll return these when appropriate. :contentReference[oaicite:8]{index=8}
+
+// Custom implementation of std::vector
+template <typename T, size_t S = 2048>
+class StaticVector
+{
+    T array[S];
+    size_t len;
+
+public:
+    const T *data() { return array; }
+    size_t size() { return len; }
+    void reserve(size_t) {}
+    void clear() { len = 0; }
+    void push_back(T val)
+    {
+        if (len >= S)
+            return;
+        array[len++] = val;
+    }
+    void insert(const T *val, size_t n)
+    {
+        memcpy(array + len, val, n);
+    }
+    void insert(const StaticVector<T> *val)
+    {
+        memcpy(array + len, val->array, val->len);
+    }
+    void assign(size_t n, T val)
+    {
+        memset(array, val, n);
+    }
+    T &operator[](size_t n)
+    {
+        return array[n];
+    }
+    void erase(size_t n)
+    {
+        len -= n;
+        memcpy(array, array + n, len);
+    }
+};
 
 // ---------- CRC32 (public domain style) ----------
 // Polynomial 0xEDB88320 reflected poly (standard CRC32)
@@ -84,12 +125,12 @@ static uint32_t be32(const uint8_t *p)
 {
     return (uint32_t(p[0]) << 24) | (uint32_t(p[1]) << 16) | (uint32_t(p[2]) << 8) | uint32_t(p[3]);
 }
-static void write_be16(std::vector<uint8_t> &v, uint16_t x)
+static void write_be16(StaticVector<uint8_t> &v, uint16_t x)
 {
     v.push_back((x >> 8) & 0xFF);
     v.push_back(x & 0xFF);
 }
-static void write_be32(std::vector<uint8_t> &v, uint32_t x)
+static void write_be32(StaticVector<uint8_t> &v, uint32_t x)
 {
     v.push_back((x >> 24) & 0xFF);
     v.push_back((x >> 16) & 0xFF);
@@ -162,11 +203,11 @@ static bool uart_send_bytes(const uint8_t *data, size_t len)
 static void send_response(uint8_t flag, const uint8_t *payload, size_t payload_len)
 {
     // Build response payload (Flag + payload)
-    std::vector<uint8_t> body;
+    StaticVector<uint8_t> body;
     body.reserve(1 + payload_len);
     body.push_back(flag);
     if (payload && payload_len)
-        body.insert(body.end(), payload, payload + payload_len);
+        body.insert(payload, payload_len);
 
     // Compute CRC32 over body (payload for wrapper CRC is "payload bytes", for responses payload includes flag per spec).
     // The PDF describes: Response = Size Flag Payload ... CRC32 (CRC covers Flag+Payload). :contentReference[oaicite:10]{index=10}
@@ -176,11 +217,11 @@ static void send_response(uint8_t flag, const uint8_t *payload, size_t payload_l
     // total_length = size(2) + body + crc(4)
     uint16_t total_len = uint16_t(2 + body.size() + 4);
 
-    std::vector<uint8_t> frame;
+    StaticVector<uint8_t> frame;
     frame.reserve(total_len);
-    write_be16(frame, total_len);                        // Size (2 bytes BE)
-    frame.insert(frame.end(), body.begin(), body.end()); // Flag + payload
-    write_be32(frame, crc);                              // CRC32 BE
+    write_be16(frame, total_len); // Size (2 bytes BE)
+    frame.insert(&body);          // Flag + payload
+    write_be32(frame, crc);       // CRC32 BE
 
     uart_send_bytes(frame.data(), frame.size());
 }
@@ -189,10 +230,10 @@ static void send_response(uint8_t flag, const uint8_t *payload, size_t payload_l
 
 // Example: return realtime payload (for 'A' command). The returned bytes must match the ECU's outpc layout.
 // Here we return an example small sample; replace with your actual data retrieval.
-static std::vector<uint8_t> get_realtime_payload()
+static StaticVector<uint8_t> get_realtime_payload()
 {
     // For demo: return 6 bytes (e.g., RPM U16, seconds U16, dummy U16) in big-endian
-    std::vector<uint8_t> v;
+    StaticVector<uint8_t> v;
     v.push_back(0x12);
     v.push_back(0x34); // RPM = 0x1234 (4660)
     v.push_back(0x00);
@@ -204,7 +245,7 @@ static std::vector<uint8_t> get_realtime_payload()
 
 // Example: read table bytes for 'r' command. Implement access to actual in-device tables/flash.
 // table: table id; offset: big-endian 16-bit; size: big-endian 16-bit
-static bool read_table(uint8_t canid, uint16_t table, uint16_t offset, uint16_t size, std::vector<uint8_t> &out)
+static bool read_table(uint8_t canid, uint16_t table, uint16_t offset, uint16_t size, StaticVector<uint8_t> &out)
 {
     // For example purposes only: produce 'size' bytes of 0xAA
     out.assign(size, 0xAA);
@@ -226,7 +267,7 @@ static bool write_table(uint8_t canid, uint16_t table, uint16_t offset, const ui
 }
 
 // Example: f command info (serial version, table blocking factor, write blocking factor)
-static void get_f_info(uint8_t canid, std::vector<uint8_t> &out)
+static void get_f_info(uint8_t canid, StaticVector<uint8_t> &out)
 {
     // Response format: Serial version (1 byte?), Table blocking factor (2 bytes?), Write blocking factor (2 bytes?)
     // PDF shows: Size Flag SerialVersion TableBlocking WriteBlocking CRC32
@@ -276,7 +317,7 @@ static void handle_command(const uint8_t *payload, size_t payload_len)
             break;
         }
         uint8_t canid = payload[1];
-        std::vector<uint8_t> out;
+        StaticVector<uint8_t> out;
         get_f_info(canid, out);
         send_response(FLAG_OK, out.data(), out.size()); // The PDF expects serial_version+tableblock+writeblock then CRC. Flag present. :contentReference[oaicite:12]{index=12}
         break;
@@ -302,7 +343,7 @@ static void handle_command(const uint8_t *payload, size_t payload_len)
             break;
         }
 
-        std::vector<uint8_t> data;
+        StaticVector<uint8_t> data;
         if (!read_table(canid, table, offset, size, data))
         {
             // choose appropriate error code: out of range or flash locked etc.
@@ -353,7 +394,7 @@ static void handle_command(const uint8_t *payload, size_t payload_len)
 }
 
 // ---------- Parser: extract wrapper-framed packets from RX ring ----------
-static std::vector<uint8_t> intake_buf; // used when assembling bytes
+static StaticVector<uint8_t> intake_buf; // used when assembling bytes
 static void process_incoming_stream()
 {
     // read all available bytes into intake_buf
@@ -364,7 +405,7 @@ static void process_incoming_stream()
         // also consider inter-character timeout to resync if needed
         return;
     }
-    intake_buf.insert(intake_buf.end(), tmp, tmp + n);
+    intake_buf.insert(tmp, n);
 
     // We expect wrapper: Size(2 BE) Payload(...) CRC32(4 BE)
     // Note: Size is the total packet length (including the two size bytes and the four CRC bytes).
@@ -379,7 +420,7 @@ static void process_incoming_stream()
         if (total_len < 2 + 1 + 4)
         {
             // invalid size -> drop first byte and resync
-            intake_buf.erase(intake_buf.begin());
+            intake_buf.erase(1);
             continue;
         }
         if (intake_buf.size() < total_len)
@@ -402,7 +443,7 @@ static void process_incoming_stream()
             // We'll send a short response with flag = 0x82 per spec. :contentReference[oaicite:15]{index=15}
             send_response(0x82 /* CRC failure */, nullptr, 0);
             // remove the processed bytes from buffer
-            intake_buf.erase(intake_buf.begin(), intake_buf.begin() + total_len);
+            intake_buf.erase(total_len);
             continue;
         }
 
@@ -411,7 +452,7 @@ static void process_incoming_stream()
         handle_command(payload_ptr, payload_len);
 
         // Remove processed bytes
-        intake_buf.erase(intake_buf.begin(), intake_buf.begin() + total_len);
+        intake_buf.erase(total_len);
     }
 }
 

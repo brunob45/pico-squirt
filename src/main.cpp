@@ -10,14 +10,18 @@
 #include "avr.h"
 #include "decoder.h"
 #include "global_state.h"
+#include "serial.h"
 
 static GlobalState gs;
 
 void core1_entry()
 {
+    protocol_init();
     auto last_trx = get_absolute_time();
+
     while (true)
     {
+        protocol_poll();
         if (get_absolute_time() - last_trx > 1'000'000) // 1000 ms
         {
             last_trx = get_absolute_time();
