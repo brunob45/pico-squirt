@@ -3,6 +3,8 @@
 #include "hardware/spi.h"
 #include "tusb.h"
 
+#include "adc_conv.h"
+
 // UART defines
 #define UART_ID uart1
 #define UART_TX_PIN 8
@@ -15,10 +17,6 @@
 #define SPI_MOSI_PIN 3
 #define SPI_MISO_PIN 4
 #define SPI_CS_PIN 5
-
-const uint8_t adc_mux[] = {1, 2, 3, 4, 5, 6, 7};
-static uint16_t adc_values[7] = {0};
-static uint8_t adc_idx = 0, spi_step = 0, adc_resl;
 
 void avr_init()
 {
@@ -42,8 +40,19 @@ void avr_init()
     gpio_put(SPI_CS_PIN, 1);
 }
 
-void avr_update()
+void avr_update(GlobalState *gs)
 {
+    const adc_update_fn adc_update[] = {
+        mat_update,
+        clt_update,
+        map_update,
+        tps_update,
+        ego_update,
+        tps_update,
+    };
+    const uint8_t adc_mux[] = {1, 2, 3, 4, 5, 6, 7};
+    static uint8_t adc_idx = 0, spi_step = 0, adc_resl;
+
     const auto len = tud_cdc_available();
     if (len && uart_is_writable(UART_ID))
     {
@@ -108,7 +117,9 @@ void avr_update()
             gpio_put(SPI_CS_PIN, 1);
 
             // Compute ADC value
-            adc_values[adc_idx] = adc_resl + 256 * adc_resh;
+            const uint16_t adc_res = adc_resl + 256 * adc_resh;
+            gs->adc[adc_idx] = adc_res;
+            adc_update[adc_idx](gs, adc_res);
 
             // Increment index for next transfer
             adc_idx += 1;
@@ -119,12 +130,4 @@ void avr_update()
         }
         break;
     }
-}
-
-uint16_t avr_get_adc(uint8_t idx)
-{
-    if (idx < sizeof(adc_mux))
-        return adc_values[idx];
-
-    return 0;
 }

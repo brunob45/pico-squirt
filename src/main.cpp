@@ -5,9 +5,12 @@
 #include "hardware/adc.h"
 
 #include "avr.h"
+#include "global_state.h"
 
 int main()
 {
+    GlobalState gs;
+
     stdio_init_all();
 
     // Watchdog example code
@@ -39,7 +42,7 @@ int main()
     while (true)
     {
         watchdog_update();
-        avr_update();
+        avr_update(&gs);
 
         if (get_absolute_time() - last_trx > 1'000'000) // 1000 ms
         {
@@ -48,10 +51,11 @@ int main()
             auto adc_value = adc_read();
             float volt = 3.3f * adc_value / 4095;
             float temperature = 27 - (volt - 0.706f) / 0.001721f;
+            gs.pico_temperature = (int16_t)(temperature * 10);
 
             // Print ADC values
             for (int i = 0; i < 7; i++)
-                printf("%d %d, ", i, avr_get_adc(i));
+                printf("%d %d, ", i, gs.adc[i]);
             printf("%0.2f\n", temperature);
         }
     }
