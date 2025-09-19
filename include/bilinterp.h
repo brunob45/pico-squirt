@@ -25,9 +25,10 @@ static size_t find_bin(const T *axis, size_t n, T v)
 template <typename T = int16_t>
 static uint16_t linear_interp(
     const T *x_axis, size_t nx,
-    const uint8_t *table,
+    const uint16_t *table,
     T x)
 {
+    // 514 ns (77 ops) per call
     // Clamp inside valid range
     x = MIN(MAX(x, x_axis[0]), x_axis[nx - 1] - 1);
 
@@ -36,17 +37,10 @@ static uint16_t linear_interp(
     T x0 = x_axis[ix];
     T x1 = x_axis[ix + 1];
 
-    uint16_t q11 = 256U * table[ix];
-    uint16_t q21 = 256U * table[ix + 1];
-
-    // 0..0xFF
-    uint32_t tx = 256U * (x - x0) / (x1 - x0);
-
-    uint16_t y = q11 + ((tx * (q21 - q11)) >> 8);
-
-    printf("x: %d, tx:%d, x0:%d, x1:%d, y:%d\n", x, tx, q11, q21, y);
-
-    return y;
+    interp0->accum[1] = 256U * (x - x0) / (x1 - x0);
+    interp0->base01 = *(uint32_t *)(table + ix);
+    // printf("x:%d, y:%d\n", x, interp0->peek[1]);
+    return interp0->peek[1];
 }
 
 template <typename T = int16_t>
@@ -56,6 +50,7 @@ static uint16_t bilinear_interp(
     const uint16_t *table,
     T x, T y)
 {
+    // 827 ns (124 ops) per call
     // Clamp inside valid range
     x = MIN(MAX(x, x_axis[0]), x_axis[nx - 1] - 1);
     y = MIN(MAX(y, y_axis[0]), y_axis[ny - 1] - 1);
@@ -68,18 +63,19 @@ static uint16_t bilinear_interp(
     T y0 = y_axis[iy];
     T y1 = y_axis[iy + 1];
 
-    uint16_t q11 = table[iy * nx + ix] << 8;
-    uint16_t q21 = table[iy * nx + ix + 1] << 8;
-    uint16_t q12 = table[(iy + 1) * nx + ix] << 8;
-    uint16_t q22 = table[(iy + 1) * nx + ix + 1] << 8;
+    interp0->accum[1] = 256U * (x - x0) / (x1 - x0); // alpha on the x axis
 
-    // 0..0xFF
-    T tx = ((x - x0) << 8) / (x1 - x0);
-    T ty = ((y - y0) << 8) / (y1 - y0);
+    size_t offset = iy * nx + ix;
+    interp0->base01 = *(uint32_t *)(table + offset); // blend on first row
+    uint16_t a = interp0->peek[1];
 
-    T a = q11 + (tx * (q21 - q11)) >> 8;
-    T b = q12 + (tx * (q22 - q12)) >> 8;
-    return a + (ty * (b - a)) >> 8;
+    interp0->base01 = *(uint32_t *)(table + offset + nx); // blend on second row
+    uint16_t b = interp0->peek[1];
+
+    interp0->accum[1] = 256U * (y - y0) / (y1 - y0); // alpha on the y axis
+    interp0->base[0] = a;                            // blend of the final value
+    interp0->base[1] = b;
+    return interp0->peek[1];
 }
 
 #endif // __BILINTERP_H__
