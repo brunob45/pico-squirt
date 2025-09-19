@@ -5,6 +5,10 @@
 #include "hardware/adc.h"
 
 #include "avr.h"
+#include "bilinterp.h"
+
+static int16_t axis[] = {100, 200, 300, 400};
+static uint8_t table[] = {10, 20, 30, 40};
 
 int main()
 {
@@ -50,9 +54,15 @@ int main()
             float temperature = 27 - (volt - 0.706f) / 0.001721f;
 
             // Print ADC values
-            for (int i = 0; i < 7; i++)
-                printf("%d %d, ", i, avr_get_adc(i));
-            printf("%0.2f\n", temperature);
+            // for (int i = 0; i < 7; i++)
+            //     printf("%d %d, ", i, avr_get_adc(i));
+            // printf("%0.2f\n", temperature);
+            int16_t x = 150;
+            linear_interp(axis, 4, table, x);
+            x = 250;
+            linear_interp(axis, 4, table, x);
+            x = 350;
+            linear_interp(axis, 4, table, x);
         }
     }
 }
