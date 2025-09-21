@@ -52,20 +52,8 @@ void avr_init()
     last_loop_time = time_us_32();
 }
 
-void avr_update(GlobalState *gs)
+void avr_update_updi()
 {
-    const adc_mux_step adc_mux[] = {
-        {1, map_update},  // ADC0
-        {2, mat_update},  // ADC1
-        {3, clt_update},  // ADC2
-        {4, tps_update},  // ADC3
-        {1, map_update},  // ADC0 - repeated for faster update rate
-        {5, bat_update},  // ADC4
-        {6, ego_update},  // ADC5
-        {7, adc6_update}, // ADC6
-    };
-    static uint8_t adc_idx = 0, spi_step = 0, adc_resl;
-
     // Update UPDI
     const auto len = tud_cdc_available();
     if (len && uart_is_writable(UART_ID))
@@ -80,6 +68,21 @@ void avr_update(GlobalState *gs)
         tud_cdc_write_char(ch); // send on USB
         tud_cdc_write_flush();
     }
+}
+
+void avr_update_adc(GlobalState *gs)
+{
+    const adc_mux_step adc_mux[] = {
+        {1, map_update},  // ADC0
+        {2, mat_update},  // ADC1
+        {3, clt_update},  // ADC2
+        {4, tps_update},  // ADC3
+        {1, map_update},  // ADC0 - repeated for faster update rate
+        {5, bat_update},  // ADC4
+        {6, ego_update},  // ADC5
+        {7, adc6_update}, // ADC6
+    };
+    static uint8_t adc_idx = 0, spi_step = 0, adc_resl;
 
     // Update SPI
     switch (spi_step)

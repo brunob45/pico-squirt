@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <cstring>
+
 #include "pico/stdlib.h"
 
 #include "pico/multicore.h"
@@ -8,18 +10,34 @@
 #include "hardware/adc.h"
 
 #include "avr.h"
-#include "linear_interp.h"
 #include "decoder.h"
+#include "flash.h"
 #include "global_state.h"
+#include "linear_interp.h"
 
 static GlobalState gs;
+
+static uint8_t *page1_offset = (uint8_t *)XIP_BASE + PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;
+
+static struct
+{
+    uint32_t page_flags;
+    uint32_t page_crc;
+
+    uint16_t ve_table[16 * 16];
+    uint16_t afr_table[16 * 16];
+    uint16_t adv_table[16 * 16];
+
+    int16_t ve_x_axis[16];
+    int16_t ve_y_axis[16];
+} page1;
 
 void core1_entry()
 {
     auto last_trx = get_absolute_time();
     while (true)
     {
-        if (get_absolute_time() - last_trx > 1'000'000) // 1000 ms
+        if (get_absolute_time() - last_trx > 1'000'000) // 1s
         {
             last_trx = get_absolute_time();
 
@@ -58,25 +76,25 @@ int main()
         // Whatever action you may take if a watchdog caused a reboot
     }
 
+    // Enable the watchdog, requiring the watchdog to be updated every 100ms or the chip will reboot
+    watchdog_enable(100, true);
+
     // Init onboard LED
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, 1);
     gpio_put(PICO_DEFAULT_LED_PIN, 1);
-
-    linear_interp_init();
-
-    // Enable the watchdog, requiring the watchdog to be updated every 100ms or the chip will reboot
-    // second arg is pause on debug which means the watchdog will pause when stepping through code
-    watchdog_enable(100, 1);
-
-    // You need to call this function at least more often than the 100ms in the enable call to prevent a reboot
-    watchdog_update();
 
     // Initialize the ADC
     adc_init();
     adc_set_temp_sensor_enabled(true);
     adc_select_input(ADC_TEMPERATURE_CHANNEL_NUM);
     hw_set_bits(&adc_hw->cs, ADC_CS_START_ONCE_BITS); // Start conversions
+
+    // Initialize the hardware interp
+    linear_interp_init();
+
+    // Read flash
+    memcpy(&page1, page1_offset, sizeof(page1));
 
     avr_init(); // SPI & UPDI
 
@@ -91,7 +109,8 @@ int main()
     {
         watchdog_update();
         dec.update(&gs);
-        avr_update(&gs);
+        // avr_update_updi();
+        avr_update_adc(&gs);
 
         if (adc_hw->cs & ADC_CS_READY_BITS)
         {
@@ -100,7 +119,8 @@ int main()
             float temperature = 27 - (volt - 0.706f) / 0.001721f;
             gs.pico_temperature = (int16_t)(temperature * 10);
             hw_set_bits(&adc_hw->cs, ADC_CS_START_ONCE_BITS);
-
+        }
+        {
             // Print ADC values
             // for (int i = 0; i < 7; i++)
             //     printf("%d %d, ", i, avr_get_adc(i));

@@ -39,7 +39,6 @@ add_executable(pico-squirt
     ${CMAKE_CURRENT_LIST_DIR}/src/avr.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/canbus.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/decoder.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/src/flash.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/simulation.cpp
     ${CMAKE_CURRENT_LIST_DIR}/src/adc_conv.cpp
