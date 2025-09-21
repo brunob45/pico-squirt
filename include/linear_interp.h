@@ -6,6 +6,16 @@
 
 #include "hardware/interp.h"
 
+static void linear_interp_init()
+{
+    interp_config cfg = interp_default_config();
+    interp_config_set_blend(&cfg, true);
+    interp_set_config(interp0, 0, &cfg);
+
+    cfg = interp_default_config();
+    interp_set_config(interp0, 1, &cfg);
+}
+
 // binary search on the axis
 template <typename T = int16_t>
 static size_t find_bin(const T *axis, size_t n, T v)

@@ -8,7 +8,7 @@
 #include "hardware/adc.h"
 
 #include "avr.h"
-#include "bilinterp.h"
+#include "linear_interp.h"
 #include "decoder.h"
 #include "global_state.h"
 
@@ -63,17 +63,7 @@ int main()
     gpio_set_dir(PICO_DEFAULT_LED_PIN, 1);
     gpio_put(PICO_DEFAULT_LED_PIN, 1);
 
-    interp_config cfg = interp_default_config();
-    interp_config_set_blend(&cfg, true);
-    interp_set_config(interp0, 0, &cfg);
-
-    cfg = interp_default_config();
-    interp_set_config(interp0, 1, &cfg);
-
-    cfg = interp_default_config();
-    interp_config_set_clamp(&cfg, true);
-    interp_config_set_signed(&cfg, true);
-    interp_set_config(interp1, 0, &cfg);
+    linear_interp_init();
 
     // Enable the watchdog, requiring the watchdog to be updated every 100ms or the chip will reboot
     // second arg is pause on debug which means the watchdog will pause when stepping through code
