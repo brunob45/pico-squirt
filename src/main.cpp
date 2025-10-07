@@ -140,6 +140,10 @@ static uint16_t table[] = {
 
 static int get_fuel_pw(GlobalState* gs)
 {
+    // TODO:
+    // - include airflow into temperature - slower air heats up in the manifold
+    // - include volumetric efficiency
+
     // https://en.wikipedia.org/wiki/Standard_temperature_and_pressure#International_Standard_Atmosphere
     // At standard mean sea level it specifies a temperature of 15 °C (59 °F),
     // pressure of 101,325 pascals (14.6959 psi) (1 atm), and
