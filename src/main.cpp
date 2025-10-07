@@ -138,6 +138,26 @@ static uint16_t table[] = {
     30, 40, 50, 60,
     40, 50, 60, 70};
 
+static int get_fuel_pw(GlobalState* gs)
+{
+    // https://en.wikipedia.org/wiki/Standard_temperature_and_pressure#International_Standard_Atmosphere
+    // At standard mean sea level it specifies a temperature of 15 °C (59 °F),
+    // pressure of 101,325 pascals (14.6959 psi) (1 atm), and
+    // a density of 1.2250 kilograms per cubic meter (0.07647 lb/cu ft)
+
+    float pressure = 0.1f * gs->manifold_pressure; // kPa
+    float temperature = 0.1f * gs->manifold_temperature + 273.15f; // K
+
+    // 1.225 g/L, 23.645 L/mol, 8.145 J/(mol*K)
+    float density = (1.225f * 23.645f / 8.3145f) * pressure / temperature; // g / L
+
+    float air_mass = 1600 * density; // mg - 1.6 L engine capacity
+    float fuel_mass = air_mass / 14.7f; // mg - stoich 14.7:1
+    float fuel_vol = fuel_mass / 737.2f; // cc - 737.2 g/L https://support.haltech.com/portal/en/kb/articles/primary-fuel-density
+    float pw = fuel_vol / (230 * 4) * 60'000'000; // 230cc/min x 4 inj * 60e6 us/min
+    return pw;
+}
+
 volatile uint16_t test;
 
 int main()
